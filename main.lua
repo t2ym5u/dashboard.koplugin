@@ -1,14 +1,14 @@
 local _dir         = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
 local _plugins_dir = _dir:match("^(.*)/[^/]+/$") or (_dir .. "..")
 
-local ButtonDialog    = require("ui/widget/buttondialog")
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
+local Menu            = require("ui/widget/menu")
+local Screen          = require("device/screen")
 local UIManager       = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _               = require("gettext")
 
--- Plugin IDs qui ne sont pas des jeux (exclus des stats de jeux)
 local NON_GAME_IDS = {
     startmenu     = true,
     pluginmanager = true,
@@ -42,8 +42,6 @@ end
 -- Collecte des données
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Retourne { books = [{title, authors, percent, last_read},...], n_total }
--- Les 3 livres les plus récents depuis ReadHistory + leur progression.
 local function reading_data()
     local ok, RH = pcall(require, "readhistory")
     if not ok then return {}, 0 end
@@ -58,6 +56,7 @@ local function reading_data()
             title     = it.title or (it.file and it.file:match("([^/]+)$"):gsub("%.[^.]+$", "")) or "?",
             authors   = it.authors,
             last_read = it.time,
+            file      = it.file,
             percent   = nil,
         }
         if ok2 and it.file then
@@ -71,8 +70,6 @@ local function reading_data()
     return books, #hist
 end
 
--- Retourne { games = [{fullname, ts},...], n_installed, n_played }
--- Scanne les plugins installés et trie par date de dernier fichier de sauvegarde.
 local function game_data()
     local lfs = get_lfs()
     if not lfs then return {}, 0, 0 end
@@ -92,7 +89,7 @@ local function game_data()
                     local mtime = lfs.attributes(sdir .. "/" .. name .. ".lua", "modification")
                     if mtime then
                         n_played = n_played + 1
-                        games[#games + 1] = { fullname = fullname or name, ts = mtime }
+                        games[#games + 1] = { name = name, fullname = fullname or name, ts = mtime }
                     end
                 end
             end
@@ -103,99 +100,6 @@ local function game_data()
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- SECTIONS — modifiez librement : ajoutez, supprimez, réordonnez.
---
--- Chaque section : { titre = string, render = function(data) → string }
--- `data` contient : books, n_books, games, n_inst, n_played
--- ─────────────────────────────────────────────────────────────────────────────
-
-local SECTIONS = {
-
-    -- ── Livre en cours ───────────────────────────────────────────────────────
-    {
-        titre  = "Lecture",
-        render = function(d)
-            if #d.books == 0 then return "Aucun historique de lecture." end
-            local b = d.books[1]
-            local lines = {}
-            -- Titre + progression
-            if b.percent then
-                lines[#lines + 1] = b.title
-                    .. "  \u{2014}  "
-                    .. math.floor(b.percent * 100) .. "%"
-            else
-                lines[#lines + 1] = b.title
-            end
-            -- Auteur
-            if b.authors and b.authors ~= "" then
-                lines[#lines + 1] = b.authors
-            end
-            -- Date de dernière lecture
-            if b.last_read then
-                lines[#lines + 1] = "Repris " .. reltime(b.last_read)
-            end
-            -- Livres récents supplémentaires (2 et 3)
-            for i = 2, #d.books do
-                local bi = d.books[i]
-                local pi = bi.percent
-                    and ("  " .. math.floor(bi.percent * 100) .. "%") or ""
-                lines[#lines + 1] = ""
-                lines[#lines + 1] = bi.title .. pi
-                if bi.last_read then
-                    lines[#lines + 1] = "  " .. reltime(bi.last_read)
-                end
-            end
-            return table.concat(lines, "\n")
-        end,
-    },
-
-    -- ── Derniers jeux ────────────────────────────────────────────────────────
-    {
-        titre  = "Derniers jeux",
-        render = function(d)
-            if #d.games == 0 then return "Aucun jeu joué pour l'instant." end
-            local lines = {}
-            for i = 1, math.min(5, #d.games) do
-                local g = d.games[i]
-                lines[#lines + 1] = g.fullname .. "  \u{2014}  " .. reltime(g.ts)
-            end
-            return table.concat(lines, "\n")
-        end,
-    },
-
-    -- ── Statistiques ─────────────────────────────────────────────────────────
-    {
-        titre  = "Statistiques",
-        render = function(d)
-            local lines = {
-                "Livres dans l'historique : " .. d.n_books,
-                "Jeux installés : "            .. d.n_inst,
-                "Jeux joués au moins une fois : " .. d.n_played,
-            }
-            return table.concat(lines, "\n")
-        end,
-    },
-
-}
-
--- ─────────────────────────────────────────────────────────────────────────────
--- Construction du texte affiché
--- ─────────────────────────────────────────────────────────────────────────────
-
-local function build_content(data)
-    local parts = {}
-    for i, sec in ipairs(SECTIONS) do
-        if i > 1 then parts[#parts + 1] = "" end
-        parts[#parts + 1] = "\u{25B6} " .. sec.titre:upper()
-        local body = sec.render(data)
-        if body and body ~= "" then
-            parts[#parts + 1] = body
-        end
-    end
-    return table.concat(parts, "\n")
-end
-
--- ─────────────────────────────────────────────────────────────────────────────
 -- Plugin Dashboard
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -203,8 +107,6 @@ local Dashboard = WidgetContainer:extend{
     name        = "dashboard",
     is_doc_only = false,
 }
-
--- ── Persistance des préférences ──────────────────────────────────────────────
 
 function Dashboard:ensureSettings()
     if not self.settings then
@@ -227,13 +129,10 @@ function Dashboard:saveSetting(key, value)
     self.settings:flush()
 end
 
--- ── Cycle de vie ─────────────────────────────────────────────────────────────
-
 function Dashboard:init()
     self:ensureSettings()
     self.ui.menu:registerToMainMenu(self)
 
-    -- Affichage automatique au démarrage (FileManager seulement, pas en lecture)
     if not self.ui.document and self:getSetting("show_on_startup", false) then
         local delay = self:getSetting("startup_delay", 1.0)
         UIManager:scheduleIn(delay, function()
@@ -241,8 +140,6 @@ function Dashboard:init()
         end)
     end
 end
-
--- ── Menu principal ────────────────────────────────────────────────────────────
 
 function Dashboard:addToMainMenu(menu_items)
     menu_items.dashboard = {
@@ -253,7 +150,6 @@ function Dashboard:addToMainMenu(menu_items)
                 text     = _("Ouvrir le Dashboard"),
                 callback = function() self:show() end,
             },
-            -- ── Démarrage automatique ──────────────────────────────────────
             {
                 text         = _("Afficher au démarrage"),
                 checked_func = function()
@@ -294,7 +190,6 @@ function Dashboard:addToMainMenu(menu_items)
                 end,
                 callback     = function() self:saveSetting("startup_delay", 2.0) end,
             },
-            -- ── Bouton Home ────────────────────────────────────────────────
             {
                 text         = _("Bouton Home → Dashboard"),
                 checked_func = function()
@@ -309,10 +204,6 @@ function Dashboard:addToMainMenu(menu_items)
     }
 end
 
--- ── Interception du bouton Home (lecteur) ────────────────────────────────────
--- KOReader dispatch onHome à tous les composants enregistrés.
--- Retourner true consomme l'événement et empêche le retour à la bibliothèque.
-
 function Dashboard:onHome()
     if self.ui.document and self:getSetting("home_opens_dashboard", false) then
         self:show()
@@ -320,54 +211,150 @@ function Dashboard:onHome()
     end
 end
 
-function Dashboard:show()
-    local books, n_books         = reading_data()
-    local games, n_inst, n_played = game_data()
-    local data = {
-        books    = books,
-        n_books  = n_books,
-        games    = games,
-        n_inst   = n_inst,
-        n_played = n_played,
-    }
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Construction des items du Menu
+-- ─────────────────────────────────────────────────────────────────────────────
 
-    local content  = build_content(data)
+local function section_header(title, mandatory)
+    return {
+        text      = "\u{25B6} " .. title:upper(),
+        mandatory = mandatory,
+        bold      = true,
+        -- pas de callback : tap ignoré
+    }
+end
+
+function Dashboard:buildItems(books, n_books, games, n_inst, n_played)
     local self_ref = self
-    local dlg
+    local items    = {}
+    local close_fn -- défini après création du menu
 
-    -- Rangée de boutons : MAJ plugins (si disponible) + Bibliothèque (si lecteur) + Fermer
-    local btn_row = {}
-    if self.ui.pluginmanager then
-        btn_row[#btn_row + 1] = {
+    local function close_and(fn)
+        return function()
+            if close_fn then close_fn() end
+            UIManager:scheduleIn(0.1, fn)
+        end
+    end
+
+    -- ── Lecture ──────────────────────────────────────────────────────────────
+    items[#items+1] = section_header("Lecture", n_books .. " livres")
+
+    if #books == 0 then
+        items[#items+1] = { text = "Aucun historique de lecture." }
+    else
+        for i, b in ipairs(books) do
+            local pct  = b.percent and (math.floor(b.percent * 100) .. "%") or nil
+            local info = (pct or "") .. (b.last_read and ("  " .. reltime(b.last_read)) or "")
+            local bfile = b.file
+
+            local cb = bfile and close_and(function()
+                local ReaderUI = require("apps/reader/readerui")
+                ReaderUI:showReader(bfile)
+            end) or nil
+
+            items[#items+1] = {
+                text      = b.title,
+                mandatory = info ~= "" and info or nil,
+                bold      = (i == 1),
+                callback  = cb,
+            }
+            if b.authors and b.authors ~= "" then
+                items[#items+1] = {
+                    text     = "  " .. b.authors,
+                    callback = cb,
+                }
+            end
+        end
+    end
+
+    -- ── Derniers jeux ────────────────────────────────────────────────────────
+    items[#items+1] = section_header("Derniers jeux", n_played .. "/" .. n_inst)
+
+    if #games == 0 then
+        items[#items+1] = { text = "Aucun jeu joué pour l'instant." }
+    else
+        for i = 1, math.min(5, #games) do
+            local g    = games[i]
+            local gname = g.name
+            items[#items+1] = {
+                text      = g.fullname,
+                mandatory = reltime(g.ts),
+                callback  = close_and(function()
+                    local plugin = self_ref.ui[gname]
+                    if plugin and type(plugin.showGame) == "function" then
+                        plugin:showGame()
+                    end
+                end),
+            }
+        end
+    end
+
+    -- ── Statistiques ─────────────────────────────────────────────────────────
+    items[#items+1] = section_header("Statistiques")
+    items[#items+1] = {
+        text = "Livres dans l'historique : " .. n_books,
+    }
+    items[#items+1] = {
+        text = "Jeux installés : " .. n_inst
+            .. "   –   joués : " .. n_played,
+    }
+
+    -- ── Actions ──────────────────────────────────────────────────────────────
+    if self_ref.ui.pluginmanager then
+        items[#items+1] = section_header("Actions")
+        items[#items+1] = {
             text     = _("MAJ plugins"),
-            callback = function()
-                UIManager:close(dlg)
-                UIManager:scheduleIn(0.1, function()
-                    self_ref.ui.pluginmanager:fetchManifest()
-                end)
-            end,
+            callback = close_and(function()
+                self_ref.ui.pluginmanager:fetchManifest()
+            end),
         }
     end
-    -- En contexte lecteur : bouton pour retourner à la bibliothèque
-    if self.ui.document then
-        btn_row[#btn_row + 1] = {
+    if self_ref.ui.document then
+        items[#items+1] = {
             text     = _("Bibliothèque"),
-            callback = function()
-                UIManager:close(dlg)
+            callback = close_and(function()
                 self_ref.ui:onClose()
-            end,
+            end),
         }
     end
-    btn_row[#btn_row + 1] = {
-        text     = _("Fermer"),
-        callback = function() UIManager:close(dlg) end,
+
+    -- marge visuelle en bas de liste
+    items[#items+1] = { text = "" }
+
+    return items, function(fn) close_fn = fn end
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Affichage
+-- ─────────────────────────────────────────────────────────────────────────────
+
+function Dashboard:show()
+    local books, n_books          = reading_data()
+    local games, n_inst, n_played = game_data()
+
+    local items, set_close = self:buildItems(books, n_books, games, n_inst, n_played)
+
+    local menu_widget = Menu:new{
+        title         = _("Dashboard"),
+        item_table    = items,
+        is_borderless = true,
+        is_popout     = false,
+        width         = Screen:getWidth(),
+        height        = Screen:getHeight(),
+        onMenuHold    = function() end,
     }
 
-    dlg = ButtonDialog:new{
-        title   = content,
-        buttons = { btn_row },
-    }
-    UIManager:show(dlg)
+    -- Injecte la fonction de fermeture dans les callbacks
+    set_close(function()
+        UIManager:close(menu_widget)
+    end)
+
+    -- Dispatch les callbacks au tap
+    function menu_widget:onMenuChoice(item)
+        if item.callback then item.callback() end
+    end
+
+    UIManager:show(menu_widget)
 end
 
 return Dashboard
