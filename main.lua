@@ -6,8 +6,9 @@ package.path = _dir .. "common/?.lua;" .. _dir .. "../game-common/?.lua;" .. pac
 
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
+local Device          = require("device")
 local Menu            = require("ui/widget/menu")
-local Screen          = require("device/screen")
+local Screen          = Device.screen
 local UIManager       = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local T               = require("ffi/util").template
