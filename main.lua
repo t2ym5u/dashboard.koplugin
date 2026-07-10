@@ -2,7 +2,7 @@ local _dir         = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "
 local _plugins_dir = _dir:match("^(.*)/[^/]+/$") or (_dir .. "..")
 
 -- Add common/ (game-common copy) and ../game-common/ to the path.
-package.path = _dir .. "common/?.lua;" .. _dir .. "../game-common/?.lua;" .. package.path
+package.path = _dir .. "common/?.lua;" .. package.path
 
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
