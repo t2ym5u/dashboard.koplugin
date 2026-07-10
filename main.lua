@@ -1,13 +1,18 @@
 local _dir         = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
 local _plugins_dir = _dir:match("^(.*)/[^/]+/$") or (_dir .. "..")
 
+-- Add common/ (game-common copy) and ../game-common/ to the path.
+package.path = _dir .. "common/?.lua;" .. _dir .. "../game-common/?.lua;" .. package.path
+
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
 local Menu            = require("ui/widget/menu")
 local Screen          = require("device/screen")
 local UIManager       = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
-local _               = require("gettext")
+local T               = require("ffi/util").template
+local _               = require("i18n")
+local ok_se, StatsExporter = pcall(require, "stats_exporter")
 
 local NON_GAME_IDS = {
     startmenu     = true,
@@ -18,7 +23,7 @@ local NON_GAME_IDS = {
 }
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Fonctions utilitaires
+-- Helpers
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local function get_lfs()
@@ -30,16 +35,24 @@ end
 local function reltime(ts)
     if not ts then return "?" end
     local d = os.time() - ts
-    if d < 120        then return "à l'instant"
-    elseif d < 3600   then return math.floor(d / 60) .. " min"
-    elseif d < 86400  then return math.floor(d / 3600) .. "h"
-    elseif d < 604800 then return math.floor(d / 86400) .. "j"
-    else                   return os.date("%d/%m/%Y", ts)
+    if d < 120        then return _("just now")
+    elseif d < 3600   then return T(_("%1 min"), math.floor(d / 60))
+    elseif d < 86400  then return T(_("%1 h"),   math.floor(d / 3600))
+    elseif d < 604800 then return T(_("%1 d"),   math.floor(d / 86400))
+    else                   return os.date(_.lang() == "fr" and "%d/%m/%Y" or "%Y-%m-%d", ts)
     end
 end
 
+local function fmt_seconds(secs)
+    secs = math.floor(secs or 0)
+    local h = math.floor(secs / 3600)
+    local m = math.floor((secs % 3600) / 60)
+    if h > 0 then return string.format("%dh%02d", h, m) end
+    return string.format("%dm", m)
+end
+
 -- ─────────────────────────────────────────────────────────────────────────────
--- Collecte des données
+-- Data collection
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local function reading_data()
@@ -99,8 +112,26 @@ local function game_data()
     return games, n_inst, n_played
 end
 
+local function stats_data()
+    if not ok_se then return {} end
+    local all = StatsExporter:readAll()
+    local list = {}
+    for name, d in pairs(all) do
+        if type(d) == "table" and d.sessions then
+            list[#list + 1] = {
+                name        = name,
+                sessions    = d.sessions or 0,
+                last_played = d.last_played,
+                time_played = d.time_played or 0,
+            }
+        end
+    end
+    table.sort(list, function(a, b) return a.sessions > b.sessions end)
+    return list
+end
+
 -- ─────────────────────────────────────────────────────────────────────────────
--- Plugin Dashboard
+-- Dashboard plugin
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local Dashboard = WidgetContainer:extend{
@@ -135,69 +166,68 @@ function Dashboard:init()
 
     if not self.ui.document and self:getSetting("show_on_startup", false) then
         local delay = self:getSetting("startup_delay", 1.0)
-        UIManager:scheduleIn(delay, function()
-            self:show()
-        end)
+        UIManager:scheduleIn(delay, function() self:show() end)
     end
 end
 
 function Dashboard:addToMainMenu(menu_items)
+    local self_ref = self
     menu_items.dashboard = {
         text         = _("Dashboard"),
         sorting_hint = "tools",
         sub_item_table = {
             {
-                text     = _("Ouvrir le Dashboard"),
-                callback = function() self:show() end,
+                text     = _("Open Dashboard"),
+                callback = function() self_ref:show() end,
             },
             {
-                text         = _("Afficher au démarrage"),
+                text         = _("Show at startup"),
                 checked_func = function()
-                    return self:getSetting("show_on_startup", false)
+                    return self_ref:getSetting("show_on_startup", false)
                 end,
                 callback     = function()
-                    self:saveSetting("show_on_startup",
-                        not self:getSetting("show_on_startup", false))
+                    self_ref:saveSetting("show_on_startup",
+                        not self_ref:getSetting("show_on_startup", false))
                 end,
             },
             {
-                text         = _("Délai au démarrage : 0.5 s"),
+                text         = T(_("Startup delay: %1 s"), "0.5"),
                 checked_func = function()
-                    return self:getSetting("startup_delay", 1.0) == 0.5
+                    return self_ref:getSetting("startup_delay", 1.0) == 0.5
                 end,
                 enabled_func = function()
-                    return self:getSetting("show_on_startup", false)
+                    return self_ref:getSetting("show_on_startup", false)
                 end,
-                callback     = function() self:saveSetting("startup_delay", 0.5) end,
+                callback     = function() self_ref:saveSetting("startup_delay", 0.5) end,
             },
             {
-                text         = _("Délai au démarrage : 1 s"),
+                text         = T(_("Startup delay: %1 s"), "1"),
                 checked_func = function()
-                    return self:getSetting("startup_delay", 1.0) == 1.0
+                    return self_ref:getSetting("startup_delay", 1.0) == 1.0
                 end,
                 enabled_func = function()
-                    return self:getSetting("show_on_startup", false)
+                    return self_ref:getSetting("show_on_startup", false)
                 end,
-                callback     = function() self:saveSetting("startup_delay", 1.0) end,
+                callback     = function() self_ref:saveSetting("startup_delay", 1.0) end,
             },
             {
-                text         = _("Délai au démarrage : 2 s"),
+                text         = T(_("Startup delay: %1 s"), "2"),
                 checked_func = function()
-                    return self:getSetting("startup_delay", 1.0) == 2.0
+                    return self_ref:getSetting("startup_delay", 1.0) == 2.0
                 end,
                 enabled_func = function()
-                    return self:getSetting("show_on_startup", false)
+                    return self_ref:getSetting("show_on_startup", false)
                 end,
-                callback     = function() self:saveSetting("startup_delay", 2.0) end,
+                callback     = function() self_ref:saveSetting("startup_delay", 2.0) end,
             },
             {
-                text         = _("Bouton Home → Dashboard"),
+                text         = _("Home button \xE2\x86\x92 Dashboard"),
                 checked_func = function()
-                    return self:getSetting("home_opens_dashboard", false)
+                    return self_ref:getSetting("home_opens_dashboard", false)
                 end,
                 callback     = function()
-                    self:saveSetting("home_opens_dashboard",
-                        not self:getSetting("home_opens_dashboard", false))
+                    self_ref:saveSetting("home_opens_dashboard",
+                        not self_ref:getSetting("home_opens_dashboard", false))
                 end,
             },
         },
@@ -212,22 +242,21 @@ function Dashboard:onHome()
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Construction des items du Menu
+-- Menu item builders
 -- ─────────────────────────────────────────────────────────────────────────────
 
 local function section_header(title, mandatory)
     return {
-        text      = "\u{25B6} " .. title:upper(),
+        text      = "\xE2\x96\xB6 " .. title:upper(),
         mandatory = mandatory,
         bold      = true,
-        -- pas de callback : tap ignoré
     }
 end
 
 function Dashboard:buildItems(books, n_books, games, n_inst, n_played)
     local self_ref = self
     local items    = {}
-    local close_fn -- défini après création du menu
+    local close_fn
 
     local function close_and(fn)
         return function()
@@ -236,22 +265,20 @@ function Dashboard:buildItems(books, n_books, games, n_inst, n_played)
         end
     end
 
-    -- ── Lecture ──────────────────────────────────────────────────────────────
-    items[#items+1] = section_header("Lecture", n_books .. " livres")
+    -- ── Reading ──────────────────────────────────────────────────────────────
+    items[#items+1] = section_header(_("Reading"), T(_("Books: %1"), n_books))
 
     if #books == 0 then
-        items[#items+1] = { text = "Aucun historique de lecture." }
+        items[#items+1] = { text = _("No reading history.") }
     else
         for i, b in ipairs(books) do
             local pct  = b.percent and (math.floor(b.percent * 100) .. "%") or nil
             local info = (pct or "") .. (b.last_read and ("  " .. reltime(b.last_read)) or "")
             local bfile = b.file
-
             local cb = bfile and close_and(function()
                 local ReaderUI = require("apps/reader/readerui")
                 ReaderUI:showReader(bfile)
             end) or nil
-
             items[#items+1] = {
                 text      = b.title,
                 mandatory = info ~= "" and info or nil,
@@ -259,28 +286,25 @@ function Dashboard:buildItems(books, n_books, games, n_inst, n_played)
                 callback  = cb,
             }
             if b.authors and b.authors ~= "" then
-                items[#items+1] = {
-                    text     = "  " .. b.authors,
-                    callback = cb,
-                }
+                items[#items+1] = { text = "  " .. b.authors, callback = cb }
             end
         end
     end
 
-    -- ── Derniers jeux ────────────────────────────────────────────────────────
-    items[#items+1] = section_header("Derniers jeux", n_played .. "/" .. n_inst)
+    -- ── Recent games ─────────────────────────────────────────────────────────
+    items[#items+1] = section_header(_("Recent games"),
+        T(_("Plugins installed: %1 — played: %2"), n_inst, n_played))
 
     if #games == 0 then
-        items[#items+1] = { text = "Aucun jeu joué pour l'instant." }
+        items[#items+1] = { text = _("No games played yet.") }
     else
         for i = 1, math.min(5, #games) do
-            local g    = games[i]
-            local gname = g.name
+            local g = games[i]
             items[#items+1] = {
                 text      = g.fullname,
                 mandatory = reltime(g.ts),
                 callback  = close_and(function()
-                    local plugin = self_ref.ui[gname]
+                    local plugin = self_ref.ui[g.name]
                     if plugin and type(plugin.showGame) == "function" then
                         plugin:showGame()
                     end
@@ -289,43 +313,53 @@ function Dashboard:buildItems(books, n_books, games, n_inst, n_played)
         end
     end
 
-    -- ── Statistiques ─────────────────────────────────────────────────────────
-    items[#items+1] = section_header("Statistiques")
-    items[#items+1] = {
-        text = "Livres dans l'historique : " .. n_books,
-    }
-    items[#items+1] = {
-        text = "Jeux installés : " .. n_inst
-            .. "   –   joués : " .. n_played,
-    }
+    -- ── Play stats ───────────────────────────────────────────────────────────
+    local stats = stats_data()
+    items[#items+1] = section_header(_("Play stats"))
+    if #stats == 0 then
+        items[#items+1] = { text = _("No stats yet.") }
+    else
+        for i = 1, math.min(5, #stats) do
+            local s = stats[i]
+            local last = s.last_played and reltime(s.last_played) or "?"
+            items[#items+1] = {
+                text      = s.name,
+                mandatory = T(_("%1 sessions · %2"), s.sessions, last),
+            }
+            if s.time_played and s.time_played > 60 then
+                items[#items+1] = {
+                    text = "  " .. T(_("Time: %1"), fmt_seconds(s.time_played)),
+                }
+            end
+        end
+    end
 
     -- ── Actions ──────────────────────────────────────────────────────────────
-    if self_ref.ui.pluginmanager then
-        items[#items+1] = section_header("Actions")
-        items[#items+1] = {
-            text     = _("MAJ plugins"),
-            callback = close_and(function()
-                self_ref.ui.pluginmanager:fetchManifest()
-            end),
-        }
-    end
-    if self_ref.ui.document then
-        items[#items+1] = {
-            text     = _("Bibliothèque"),
-            callback = close_and(function()
-                self_ref.ui:onClose()
-            end),
-        }
+    if self_ref.ui.pluginmanager or self_ref.ui.document then
+        items[#items+1] = section_header(_("Actions"))
+        if self_ref.ui.pluginmanager then
+            items[#items+1] = {
+                text     = _("Update plugins"),
+                callback = close_and(function()
+                    self_ref.ui.pluginmanager:fetchManifest()
+                end),
+            }
+        end
+        if self_ref.ui.document then
+            items[#items+1] = {
+                text     = _("Library"),
+                callback = close_and(function() self_ref.ui:onClose() end),
+            }
+        end
     end
 
-    -- marge visuelle en bas de liste
     items[#items+1] = { text = "" }
 
     return items, function(fn) close_fn = fn end
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Affichage
+-- Show
 -- ─────────────────────────────────────────────────────────────────────────────
 
 function Dashboard:show()
@@ -344,12 +378,8 @@ function Dashboard:show()
         onMenuHold    = function() end,
     }
 
-    -- Injecte la fonction de fermeture dans les callbacks
-    set_close(function()
-        UIManager:close(menu_widget)
-    end)
+    set_close(function() UIManager:close(menu_widget) end)
 
-    -- Dispatch les callbacks au tap
     function menu_widget:onMenuChoice(item)
         if item.callback then item.callback() end
     end
