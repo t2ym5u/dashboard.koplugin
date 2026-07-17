@@ -13,6 +13,8 @@ local UIManager       = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local T               = require("ffi/util").template
 local _               = require("i18n")
+
+require("i18n").extend(lrequire("i18n_fr"))
 local ok_se, StatsExporter = pcall(require, "stats_exporter")
 
 local NON_GAME_IDS = {
