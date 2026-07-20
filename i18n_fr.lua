@@ -18,4 +18,7 @@ return {
     ["%1 sessions · %2"]                     = { fr = "%1 parties · %2" },
     ["Time: %1"]                             = { fr = "Durée : %1" },
     ["No stats yet."]                        = { fr = "Aucune statistique pour l'instant." },
+    ["Actions"]                              = { fr = "Actions" },
+    ["Library"]                              = { fr = "Bibliothèque" },
+    ["Home button \xE2\x86\x92 Dashboard"]   = { fr = "Bouton Accueil → Tableau de bord" },
 }
