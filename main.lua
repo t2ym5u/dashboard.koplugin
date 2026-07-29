@@ -4,6 +4,14 @@ local _plugins_dir = _dir:match("^(.*)/[^/]+/$") or (_dir .. "..")
 -- Add common/ (game-common copy) and ../game-common/ to the path.
 package.path = _dir .. "common/?.lua;" .. package.path
 
+local function lrequire(name)
+    local key = _dir .. name
+    if not package.loaded[key] then
+        package.loaded[key] = assert(loadfile(_dir .. name .. ".lua"))()
+    end
+    return package.loaded[key]
+end
+
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
 local Device          = require("device")
