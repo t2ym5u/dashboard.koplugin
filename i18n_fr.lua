@@ -21,4 +21,7 @@ return {
     ["Actions"]                              = { fr = "Actions" },
     ["Library"]                              = { fr = "Bibliothèque" },
     ["Home button \xE2\x86\x92 Dashboard"]   = { fr = "Bouton Accueil → Tableau de bord" },
+    ["Games (Dashboard)"]                    = { fr = "Jeux (Dashboard)" },
+    ["Games"]                                = { fr = "Jeux" },
+    ["Suggestion"]                           = { fr = "Suggestion" },
 }
