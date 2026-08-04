@@ -12,12 +12,25 @@ local function lrequire(name)
     return package.loaded[key]
 end
 
+local Blitbuffer      = require("ffi/blitbuffer")
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
 local Device          = require("device")
+local Font            = require("ui/font")
+local FrameContainer  = require("ui/widget/container/framecontainer")
+local Geom            = require("ui/geometry")
+local GestureRange    = require("ui/gesturerange")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan  = require("ui/widget/horizontalspan")
+local InputContainer  = require("ui/widget/container/inputcontainer")
+local LeftContainer   = require("ui/widget/container/leftcontainer")
 local Menu            = require("ui/widget/menu")
+local RightContainer  = require("ui/widget/container/rightcontainer")
 local Screen          = Device.screen
+local TextWidget      = require("ui/widget/textwidget")
 local UIManager       = require("ui/uimanager")
+local VerticalGroup   = require("ui/widget/verticalgroup")
+local VerticalSpan    = require("ui/widget/verticalspan")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local T               = require("ffi/util").template
 local _               = require("i18n")
@@ -94,13 +107,16 @@ local function reading_data()
     return books, #hist
 end
 
+-- Returns: games (played, sorted most-recent first), n_inst, n_played,
+-- installed (every non-excluded game plugin, played or not -- the pool the
+-- homescreen "random suggestion" row draws from).
 local function game_data()
     local lfs = get_lfs()
-    if not lfs then return {}, 0, 0 end
+    if not lfs then return {}, 0, 0, {} end
     local sdir = DataStorage:getSettingsDir()
-    local games, n_inst, n_played = {}, 0, 0
+    local games, installed, n_inst, n_played = {}, {}, 0, 0
     local ok, iter, dobj = pcall(lfs.dir, _plugins_dir)
-    if not ok then return {}, 0, 0 end
+    if not ok then return {}, 0, 0, {} end
     for entry in iter, dobj do
         if entry:match("%.koplugin$") then
             local f = io.open(_plugins_dir .. "/" .. entry .. "/_meta.lua", "r")
@@ -110,17 +126,26 @@ local function game_data()
                 local fullname = src:match('fullname%s*=[^"]*"([^"]*)"')
                 if name and not NON_GAME_IDS[name] then
                     n_inst = n_inst + 1
+                    local disp = fullname or name
+                    installed[#installed + 1] = { name = name, fullname = disp }
                     local mtime = lfs.attributes(sdir .. "/" .. name .. ".lua", "modification")
                     if mtime then
                         n_played = n_played + 1
-                        games[#games + 1] = { name = name, fullname = fullname or name, ts = mtime }
+                        games[#games + 1] = { name = name, fullname = disp, ts = mtime }
                     end
                 end
             end
         end
     end
     table.sort(games, function(a, b) return a.ts > b.ts end)
-    return games, n_inst, n_played
+    return games, n_inst, n_played, installed
+end
+
+-- Random pick from the full installed-games pool (played or not), re-rolled
+-- on every call -- no de-dup against the "recent" list.
+local function pick_random_game(installed)
+    if not installed or #installed == 0 then return nil end
+    return installed[math.random(#installed)]
 end
 
 local function stats_data()
@@ -139,6 +164,121 @@ local function stats_data()
     end
     table.sort(list, function(a, b) return a.sessions > b.sessions end)
     return list
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Simpleui homescreen module ("Games" row)
+--
+-- Optional: only registered (see Dashboard:init below) when
+-- plugins/simpleui.koplugin is installed. Surfaces the same "recent games"
+-- data as the Dashboard menu above, as a compact homescreen row.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local GAMES_ROW_H   = Screen:scaleBySize(40)
+local GAMES_ROW_PAD = Screen:scaleBySize(10)
+
+local function buildGameRow(w, label, subtitle, on_tap)
+    local inner_w  = w - GAMES_ROW_PAD * 2
+    local sub_tw   = TextWidget:new{
+        text    = subtitle or "",
+        face    = Font:getFace("cfont", 14),
+        fgcolor = Blitbuffer.COLOR_DARK_GRAY,
+    }
+    local sub_w    = sub_tw:getSize().w
+    local label_tw = TextWidget:new{
+        text                   = label,
+        face                   = Font:getFace("cfont", 18),
+        fgcolor                = Blitbuffer.COLOR_BLACK,
+        max_width              = inner_w - sub_w - GAMES_ROW_PAD,
+        truncate_with_ellipsis = true,
+    }
+    local hg = HorizontalGroup:new{
+        align = "center",
+        LeftContainer:new{
+            dimen = Geom:new{ w = inner_w - sub_w - GAMES_ROW_PAD, h = GAMES_ROW_H },
+            label_tw,
+        },
+        HorizontalSpan:new{ width = GAMES_ROW_PAD },
+        RightContainer:new{
+            dimen = Geom:new{ w = sub_w, h = GAMES_ROW_H },
+            sub_tw,
+        },
+    }
+
+    local tappable = InputContainer:new{
+        dimen   = Geom:new{ w = inner_w, h = GAMES_ROW_H },
+        [1]     = hg,
+        _on_tap = on_tap,
+    }
+    tappable.ges_events = {
+        TapGamesRow = {
+            GestureRange:new{ ges = "tap", range = function() return tappable.dimen end },
+        },
+    }
+    function tappable:onTapGamesRow()
+        if self._on_tap then self._on_tap() end
+        return true
+    end
+
+    return FrameContainer:new{
+        bordersize = 0, padding = GAMES_ROW_PAD, padding_top = 0, padding_bottom = 0,
+        tappable,
+    }
+end
+
+-- Builds the homescreen widget: up to 5 most-recently-played rows followed by
+-- 1 random suggestion (re-rolled every call, drawn from every installed game
+-- whether played or not). Returns nil when no games are installed, so the
+-- module renders at zero height.
+local function buildGamesRowWidget(plugin, w)
+    local games, _n_inst, _n_played, installed = game_data()
+    if #installed == 0 then return nil end
+
+    local function launch(name)
+        return function()
+            local target = plugin.ui[name]
+            if target and type(target.showGame) == "function" then
+                target:showGame()
+            end
+        end
+    end
+
+    local vg = VerticalGroup:new{ align = "center" }
+    for i = 1, math.min(5, #games) do
+        local g = games[i]
+        vg[#vg + 1] = buildGameRow(w, g.fullname, reltime(g.ts), launch(g.name))
+    end
+
+    local rnd = pick_random_game(installed)
+    if rnd then
+        vg[#vg + 1] = buildGameRow(w, rnd.fullname, _("Suggestion"), launch(rnd.name))
+    end
+
+    return vg
+end
+
+-- `plugin` is the live Dashboard instance, captured by closure so row taps
+-- can reach `plugin.ui[name]:showGame()` -- mirrors the existing "Recent
+-- games" menu callback below.
+local function makeGamesRowModule(plugin)
+    local M = {}
+    M.id          = "dashboard_games_row"
+    M.name        = _("Games (Dashboard)")
+    M.label       = _("Games")
+    M.enabled_key = "dashboard_games_row_enabled"
+    M.default_on  = true
+
+    function M.build(w, _ctx)
+        return buildGamesRowWidget(plugin, w)
+    end
+
+    function M.getHeight(_ctx)
+        local games, _n_inst, _n_played, installed = game_data()
+        if #installed == 0 then return 0 end
+        return (math.min(5, #games) + 1) * GAMES_ROW_H
+    end
+
+    return M
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -178,6 +318,37 @@ function Dashboard:init()
     if not self.ui.document and self:getSetting("show_on_startup", false) then
         local delay = self:getSetting("startup_delay", 1.0)
         UIManager:scheduleIn(delay, function() self:show() end)
+    end
+
+    -- Register the "Games" row with simpleui's homescreen, if installed.
+    -- Only from the FileManager-context instance: `self.ui.document` is only
+    -- ever set in ReaderUI, and simpleui's homescreen only ever lives inside
+    -- FileManager. Dashboard:init() also runs once per opened book (ReaderUI
+    -- creates its own separate instance) -- if that instance also
+    -- registered, it would race the FM instance for the single "dashboard_
+    -- games_row" id (Registry.register replaces by id), leaving the row
+    -- pointing at whichever instance happened to init last, with no benefit.
+    --
+    -- Deferred past the initial synchronous plugin-loading pass: at this
+    -- point in :init(), simpleui.koplugin may not have added its own
+    -- directory to package.path yet, so requiring its module registry here
+    -- directly would be a coin flip depending on plugin load order.
+    if not self.ui.document then
+        local self_ref = self
+        UIManager:scheduleIn(0, function()
+            local ok, Registry = pcall(require, "desktop_modules/moduleregistry")
+            if not (ok and Registry) then return end
+            Registry.register(makeGamesRowModule(self_ref))
+            -- FileManager may have already finished its own :init() and
+            -- painted the homescreen before this scheduled callback ran, in
+            -- which case the freshly-registered module wouldn't show up
+            -- until the next unrelated repaint. Force one now if simpleui
+            -- is actually the live homescreen.
+            local sui = self_ref.ui.simpleui
+            if sui and type(sui._rebuildAllNavbars) == "function" then
+                pcall(function() sui:_rebuildAllNavbars() end)
+            end
+        end)
     end
 end
 
