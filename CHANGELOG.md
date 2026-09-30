@@ -6,6 +6,19 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.2.16] - 2026-09-30
+
+### Changed
+- `reltime` and `fmt_seconds` move to `format.lua`, unchanged except that
+  `reltime` now takes the current time as an argument so it can be asked about
+  a fixed instant.
+
+### Added
+- A spec pinning the four relative-time boundaries -- two minutes, one hour,
+  one day, one week -- the rounding direction, so a row never claims more time
+  has passed than actually has, and a timestamp from the future, which a device
+  with a jumped clock produces.
+
 ## [1.2.15] - 2026-08-05
 
 ### Added
