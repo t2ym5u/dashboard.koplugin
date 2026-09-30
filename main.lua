@@ -50,29 +50,14 @@ local NON_GAME_IDS = {
 -- Helpers
 -- ─────────────────────────────────────────────────────────────────────────────
 
+local Format      = lrequire("format")
+local reltime     = Format.reltime
+local fmt_seconds = Format.fmt_seconds
+
 local function get_lfs()
     local ok, lfs = pcall(require, "libs/libkoreader-lfs")
     if not ok then ok, lfs = pcall(require, "lfs") end
     return ok and lfs or nil
-end
-
-local function reltime(ts)
-    if not ts then return "?" end
-    local d = os.time() - ts
-    if d < 120        then return _("just now")
-    elseif d < 3600   then return T(_("%1 min"), math.floor(d / 60))
-    elseif d < 86400  then return T(_("%1 h"),   math.floor(d / 3600))
-    elseif d < 604800 then return T(_("%1 d"),   math.floor(d / 86400))
-    else                   return os.date(_.lang() == "fr" and "%d/%m/%Y" or "%Y-%m-%d", ts)
-    end
-end
-
-local function fmt_seconds(secs)
-    secs = math.floor(secs or 0)
-    local h = math.floor(secs / 3600)
-    local m = math.floor((secs % 3600) / 60)
-    if h > 0 then return string.format("%dh%02d", h, m) end
-    return string.format("%dm", m)
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
