@@ -6,6 +6,16 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.2.17] - 2026-09-30
+
+### Fixed
+- The games section was empty. Installed plugins were identified by a `name`
+  field read out of their `_meta.lua` -- a field none of these plugins
+  declares, and which KOReader 2026.03 (PR #15096) deprecated in favour of the
+  directory name. Games are now found by directory name, and told apart from
+  KOReader's own plugins by the shared library they ship. 69 games are
+  discovered where 1 was before.
+
 ## [1.2.16] - 2026-09-30
 
 ### Changed

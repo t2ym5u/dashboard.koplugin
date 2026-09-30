@@ -104,12 +104,24 @@ local function game_data()
     if not ok then return {}, 0, 0, {} end
     for entry in iter, dobj do
         if entry:match("%.koplugin$") then
-            local f = io.open(_plugins_dir .. "/" .. entry .. "/_meta.lua", "r")
+            local pdir = _plugins_dir .. "/" .. entry
+            -- The plugin id is the directory basename. This used to read
+            -- _meta.lua's `name`, which none of these plugins ever set -- so
+            -- the whole games section came up empty -- and which KOReader
+            -- 2026.03 (PR #15096) deprecated anyway. The directory name is
+            -- now the only plugin id there is.
+            local name = entry:gsub("%.koplugin$", "")
+            -- Shipping a common/ dir (game-common or sudoku-common) is what
+            -- tells this fleet apart from KOReader's own plugins, none of
+            -- which have one. checkers is the single game with no shared
+            -- library of its own.
+            local is_ours = name == "checkers"
+                or lfs.attributes(pdir .. "/common", "mode") == "directory"
+            local f = is_ours and io.open(pdir .. "/_meta.lua", "r")
             if f then
                 local src      = f:read("*a"); f:close()
-                local name     = src:match('name%s*=%s*"([^"]+)"')
                 local fullname = src:match('fullname%s*=[^"]*"([^"]*)"')
-                if name and not NON_GAME_IDS[name] then
+                if not NON_GAME_IDS[name] then
                     n_inst = n_inst + 1
                     local disp = fullname or name
                     installed[#installed + 1] = { name = name, fullname = disp }
