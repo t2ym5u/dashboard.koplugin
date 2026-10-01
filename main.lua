@@ -288,10 +288,16 @@ local Dashboard = WidgetContainer:extend{
 }
 
 function Dashboard:ensureSettings()
+    -- settings_file must be a field, not a local. KOReader's PluginLoader
+    -- reads instance.settings_file to decide whether to offer "Delete plugin
+    -- settings", and removes the file itself (2026.07, PR #15240). Compute
+    -- the path inline and the option never appears at all, leaving the file
+    -- behind when the plugin is deleted.
+    if not self.settings_file then
+        self.settings_file = DataStorage:getSettingsDir() .. "/dashboard.lua"
+    end
     if not self.settings then
-        self.settings = LuaSettings:open(
-            DataStorage:getSettingsDir() .. "/dashboard.lua"
-        )
+        self.settings = LuaSettings:open(self.settings_file)
     end
 end
 
