@@ -6,6 +6,15 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.2.18] - 2026-10-01
+
+### Fixed
+- KOReader offered no way to delete this plugin's settings. The settings path
+  was computed inline rather than stored on the instance, and `PluginLoader`
+  reads `instance.settings_file` to decide whether to show "Delete plugin
+  settings" at all (2026.07, PR #15240). The option simply never appeared, and
+  deleting the plugin left ``dashboard.lua`` behind.
+
 ## [1.2.17] - 2026-09-30
 
 ### Fixed
