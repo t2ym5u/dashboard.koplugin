@@ -1,7 +1,6 @@
 return {
     ["Dashboard"]                            = { fr = "Tableau de bord", es = "Panel de control", de = "Übersicht" },
     ["Open Dashboard"]                       = { fr = "Ouvrir le Dashboard", es = "Abrir Dashboard", de = "Dashboard öffnen" },
-    ["Show at startup"]                      = { fr = "Afficher au démarrage", es = "Mostrar al iniciar", de = "Beim Start anzeigen" },
     ["Startup delay: %1 s"]                  = { fr = "Délai au démarrage : %1 s", es = "Retraso al iniciar: %1 s", de = "Startverzögerung: %1 s" },
     ["Reading"]                              = { fr = "Lecture", es = "Lectura", de = "Lesen" },
     ["Recent games"]                         = { fr = "Derniers jeux", es = "Juegos recientes", de = "Letzte Spiele" },
@@ -24,4 +23,46 @@ return {
     ["Games (Dashboard)"]                    = { fr = "Jeux (Dashboard)", es = "Juegos (Dashboard)", de = "Spiele (Dashboard)" },
     ["Games"]                                = { fr = "Jeux", es = "Juegos", de = "Spiele" },
     ["Suggestion"]                           = { fr = "Suggestion", es = "Sugerencia", de = "Vorschlag" },
+
+    -- Home screen
+    ["Continue reading"]                     = { fr = "Reprendre la lecture", es = "Seguir leyendo", de = "Weiterlesen" },
+    ["Resume"]                               = { fr = "Reprendre", es = "Continuar", de = "Fortsetzen" },
+    ["Last played: %1"]                      = { fr = "Dernière partie : %1", es = "Última partida: %1", de = "Zuletzt gespielt: %1" },
+    ["Started today"]                        = { fr = "Commencé aujourd'hui", es = "Empezado hoy", de = "Heute begonnen" },
+    ["New puzzle today"]                     = { fr = "Nouveau défi aujourd'hui", es = "Nuevo reto hoy", de = "Heute neu" },
+    ["No games on the dashboard yet."]       = { fr = "Aucun jeu sur le tableau de bord.", es = "Aún no hay juegos en el panel.", de = "Noch keine Spiele in der Übersicht." },
+    ["Tap here to choose which games to show."] = { fr = "Touchez ici pour choisir les jeux à afficher.", es = "Toca aquí para elegir los juegos que se muestran.", de = "Hier tippen, um die angezeigten Spiele zu wählen." },
+    ["Statistics"]                           = { fr = "Statistiques", es = "Estadísticas", de = "Statistik" },
+    ["Choose games"]                         = { fr = "Choisir les jeux", es = "Elegir juegos", de = "Spiele wählen" },
+    ["Page %1 of %2"]                        = { fr = "Page %1 sur %2", es = "Página %1 de %2", de = "Seite %1 von %2" },
+    ["%1 is not installed or not active."]   = { fr = "%1 n'est pas installé ou pas activé.", es = "%1 no está instalado o no está activo.", de = "%1 ist nicht installiert oder nicht aktiv." },
+    ["Open the game menu and choose Daily Challenge."] = { fr = "Ouvrez le menu du jeu et choisissez Défi du jour.", es = "Abre el menú del juego y elige Desafío diario.", de = "Öffne das Spielmenü und wähle Tägliche Herausforderung." },
+
+    -- Choose games
+    ["Done"]                                 = { fr = "Terminé", es = "Hecho", de = "Fertig" },
+    ["%1 of %2 shown"]                       = { fr = "%1 sur %2 affichés", es = "%1 de %2 visibles", de = "%1 von %2 angezeigt" },
+    ["Tap a game to show or hide it."]       = { fr = "Touchez un jeu pour l'afficher ou le masquer.", es = "Toca un juego para mostrarlo u ocultarlo.", de = "Tippe auf ein Spiel, um es ein- oder auszublenden." },
+    ["Tap a game to show or hide it. Arrows change its place."] = { fr = "Touchez un jeu pour l'afficher ou le masquer. Les flèches le déplacent.", es = "Toca un juego para mostrarlo u ocultarlo. Las flechas cambian su posición.", de = "Tippe auf ein Spiel, um es ein- oder auszublenden. Die Pfeile verschieben es." },
+
+    -- Categories (same French as the other plugins that list them)
+    ["Logic puzzles"]                        = { fr = "Casse-têtes logiques", es = "Rompecabezas lógicos", de = "Logikrätsel" },
+    ["Word games"]                           = { fr = "Jeux de mots", es = "Juegos de palabras", de = "Wortspiele" },
+    ["Board games"]                          = { fr = "Jeux de plateau", es = "Juegos de mesa", de = "Brettspiele" },
+    ["Card & dice games"]                    = { fr = "Cartes et dés", es = "Cartas y dados", de = "Karten- und Würfelspiele" },
+    ["Classic puzzles"]                      = { fr = "Casse-têtes classiques", es = "Rompecabezas clásicos", de = "Klassische Rätsel" },
+    ["Party & quiz"]                         = { fr = "Jeux de groupe", es = "Juegos de grupo", de = "Gruppenspiele" },
+    ["Utilities"]                            = { fr = "Utilitaires", es = "Utilidades", de = "Werkzeuge" },
+    ["Other"]                                = { fr = "Autres", es = "Otros", de = "Andere" },
+
+    -- Settings (Tools > Dashboard)
+    ["Show automatically: %1"]               = { fr = "Affichage automatique : %1", es = "Mostrar automáticamente: %1", de = "Automatisch anzeigen: %1" },
+    ["At KOReader launch only"]              = { fr = "Au lancement de KOReader uniquement", es = "Solo al iniciar KOReader", de = "Nur beim Start von KOReader" },
+    ["Every time the file browser opens"]    = { fr = "À chaque ouverture de l'explorateur de fichiers", es = "Cada vez que se abre el explorador de archivos", de = "Bei jedem Öffnen des Dateibrowsers" },
+    ["Never"]                                = { fr = "Jamais", es = "Nunca", de = "Nie" },
+    ["Game order"]                           = { fr = "Ordre des jeux", es = "Orden de los juegos", de = "Reihenfolge der Spiele" },
+    ["Custom order (Choose games)"]          = { fr = "Ordre personnalisé (Choisir les jeux)", es = "Orden personalizado (Elegir juegos)", de = "Eigene Reihenfolge (Spiele wählen)" },
+    ["Last played first"]                    = { fr = "Derniers joués en premier", es = "Últimos jugados primero", de = "Zuletzt gespielte zuerst" },
+    ["Group by category"]                    = { fr = "Grouper par catégorie", es = "Agrupar por categoría", de = "Nach Kategorie gruppieren" },
+    ["Daily Challenge game"]                 = { fr = "Jeu du Défi du jour", es = "Juego del Desafío diario", de = "Spiel der täglichen Herausforderung" },
+    ["Automatic (a different game every day)"] = { fr = "Automatique (un jeu différent chaque jour)", es = "Automático (un juego distinto cada día)", de = "Automatisch (jeden Tag ein anderes Spiel)" },
 }
