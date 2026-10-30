@@ -6,6 +6,37 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.3.0] - 2026-10-30
+
+### Added
+- The dashboard is now a full-screen home screen built for e-ink: **Continue
+  reading** (last book, with progress), **Resume** (last game played),
+  **Daily Challenge** (today's puzzle in one of your puzzle games, with a ✓
+  once started today), and a paged grid of large game tiles grouped by
+  category. Landscape puts the cards in a side column.
+- Everything Startup Menu did: open automatically **at KOReader launch only**
+  (new default), **every time the file browser opens**, or **never**; choose
+  which games show. The game list is a full-screen, category-grouped
+  **Choose games** screen with show/hide and ▲ ▼ ordering, plus a **Last
+  played first** order and a **Group by category** switch.
+- **Daily Challenge game** setting: automatic (a different game every day) or
+  a fixed game.
+- One-time migration of `settings/startmenu.lua` (its game list and its
+  on/off switch) and of the former "Show at startup" checkbox.
+- Specs for the game model (ported from Startup Menu), startup trigger,
+  migration, daily pick, category grouping and paging.
+
+### Changed
+- The former dashboard list is now the **Statistics** page, reached from the
+  home screen's footer.
+- Game names are shown translated, and the statistics list shows game names
+  rather than plugin ids.
+
+### Fixed
+- Games whose `_meta.lua` writes its name as `_([[Sudoku]])` were labelled
+  with the next quoted string in the file -- their version number ("2.5.0").
+  The same bug is in Startup Menu.
+
 ## [1.2.18] - 2026-10-01
 
 ### Fixed

@@ -2,6 +2,6 @@ local _ = require("gettext")
 
 return {
     fullname    = _("Dashboard"),
-    description = _("Dashboard: current book, recent games, stats."),
-    version     = "1.2.18",
+    description = _("Home screen: continue reading, resume a game, daily challenge, your games and stats."),
+    version     = "1.3.0",
 }
