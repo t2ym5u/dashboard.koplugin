@@ -40,7 +40,10 @@ local _               = require("i18n")
 require("i18n").extend(lrequire("i18n_fr"))
 local ok_se, StatsExporter = pcall(require, "stats_exporter")
 
-local Categories  = lrequire("categories")
+-- The fleet-wide category table, from this plugin's own common/ copy (by
+-- path, like the modules above: another plugin's older game-common could
+-- otherwise hold the shared slot and miss the newest games).
+local Categories  = lrequire("common/game_categories")
 local Daily       = lrequire("daily")
 local Format      = lrequire("format")
 local Games       = lrequire("games")
@@ -49,8 +52,10 @@ local Startup     = lrequire("startup")
 local Widgets     = lrequire("widgets")
 local HomeScreen  = lrequire("home_screen")
 local ChooseGames = lrequire("games_screen")
+local AllGames    = lrequire("all_games_screen")
 HomeScreen.setModules(Layout, Format, Widgets)
 ChooseGames.setModules(Layout, Widgets)
+AllGames.setModules(Layout, Widgets)
 
 local reltime     = Format.reltime
 local fmt_seconds = Format.fmt_seconds
@@ -519,6 +524,16 @@ function Dashboard:arrangeOpts(shown)
     }
 end
 
+-- Sections for "All games": every installed game by category, alphabetical.
+function Dashboard:allGamesSections()
+    return Games.arrange(scan_games(), {
+        mode        = "custom",
+        grouped     = true,
+        category_of = Categories.of,
+        rank        = Categories.rank,
+    })
+end
+
 -- Sections for the "Choose games" list: every installed game, in the same
 -- grouping and custom order as the grid, so the arrows move what you see.
 function Dashboard:chooserSections()
@@ -600,8 +615,10 @@ function Dashboard:closeHome()
 end
 
 -- Items of the title bar's menu (left icon).
-function Dashboard:homeMenuItems(_home)
-    local items = {}
+function Dashboard:homeMenuItems(home)
+    local items = {
+        { text = _("Statistics"), callback = function() self:showStats(home) end },
+    }
     if self.ui.pluginmanager then
         items[#items + 1] = { text = _("Update plugins"), callback = function()
             self:closeHome()
@@ -682,6 +699,15 @@ function Dashboard:launchDaily(g, done)
             })
         end
     end)
+end
+
+function Dashboard:showAllGames(home)
+    UIManager:show(AllGames:new{
+        dash = self,
+        on_close = function()
+            if home and self._home == home then home:reload() end
+        end,
+    }, "full")
 end
 
 function Dashboard:showChooseGames(home)
@@ -777,6 +803,10 @@ function Dashboard:addToMainMenu(menu_items)
                     end
                 end,
                 sub_item_table = startup_sub,
+            },
+            {
+                text     = _("All games"),
+                callback = function() self_ref:showAllGames(nil) end,
             },
             {
                 text     = _("Choose games"),

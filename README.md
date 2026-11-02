@@ -31,11 +31,14 @@ targets, one repaint per page.
   the screen width), grouped by category (Logic puzzles, Sudoku, Word games,
   Board games, Card & dice games, Classic puzzles, Party & quiz, Other), paged
   with ◀ ▶ or a horizontal swipe (or the page-turn keys).
+- **All games** — every installed game, one category at a time: pick a
+  category, then tap a game to play it, or hold it to add it to the grid (or
+  take it off — a ✓ marks the games on it).
 - **Choose games** — a full-screen list of every installed game, grouped like
   the grid: tap a game to show or hide it, ▲ ▼ to change its place.
-- **Statistics** — the former dashboard list: reading history, recent games,
-  sessions and play time per game, and quick actions (update plugins, back to
-  the library).
+- **Statistics** (title bar menu ☰) — the former dashboard list: reading
+  history, recent games, sessions and play time per game, and quick actions
+  (update plugins, back to the library).
 - **Portrait and landscape** — in landscape the cards move to a left column
   and the grid takes the rest of the screen.
 - **Home-button shortcut** — optionally bind the device home button (while
@@ -51,6 +54,7 @@ Open **Tools → Dashboard**:
 |---------|-------------|
 | Open Dashboard | Show the dashboard now |
 | Show automatically | **At KOReader launch only** (default), **Every time the file browser opens** (also after closing a book), or **Never**; plus the startup delay (0.5 / 1 / 2 s). It never opens over a book. |
+| All games | Browse every installed game by category |
 | Choose games | Which games the grid shows, and their order |
 | Game order | **Custom order** (set in Choose games) or **Last played first**; **Group by category** on/off |
 | Daily Challenge game | **Automatic** (a different game every day) or one game of your choice |

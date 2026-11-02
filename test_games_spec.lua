@@ -380,7 +380,8 @@ describe("Games.arrange", function()
     }
     setup(function()
         Games = require("games")
-        Categories = require("categories")
+        -- common/ is game-common (a symlink in the monorepo, a copy on a reader).
+        Categories = dofile(DIR .. "common/game_categories.lua")
     end)
 
     local function opts(extra)

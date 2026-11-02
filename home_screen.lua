@@ -4,7 +4,7 @@
 --   Continue reading: <book>            -- hidden when there is no last book
 --   Resume: <game>   |  Daily Challenge -- each hidden when it has nothing
 --   game grid, by category, paged
---   footer: < | Statistics | Choose games | >
+--   footer: < | All games | Choose games | >   (Statistics: title-bar menu)
 --
 -- Landscape moves the cards into a left column and gives the grid the rest.
 -- E-ink first: no animation, black on white, thick borders, every target at
@@ -245,7 +245,6 @@ end
 
 function HomeScreen:menuButtons()
     local items = self.dash:homeMenuItems(self)
-    if #items == 0 then return nil end
     return function()
         local dlg
         local buttons = {}
@@ -272,7 +271,7 @@ function HomeScreen:buildLayout()
     local footer = Widgets.footer(content_w, {
         { text = "\u{25C0}", weight = 0.6, enabled_func = function() return self.page > 1 end,
           callback = function() self:onPrevPage() end },
-        { text = _("Statistics"), callback = function() self.dash:showStats(self) end },
+        { text = _("All games"), callback = function() self.dash:showAllGames(self) end },
         { text = _("Choose games"), callback = function() self.dash:showChooseGames(self) end },
         { text = "\u{25B6}", weight = 0.6,
           enabled_func = function() return self.page < (self.n_pages or 1) end,
