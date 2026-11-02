@@ -6,6 +6,23 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.4.0] - 2026-11-02
+
+### Added
+- **All games**: every installed game, one category at a time — a tile per
+  category with its game count, then that category's games as tiles. Tap a
+  game to play it, hold it to add it to the dashboard grid or take it off (a
+  ✓ marks the ones on it). In the home screen's footer and in Tools →
+  Dashboard.
+
+### Changed
+- **Statistics** moved from the footer to the title bar's menu (☰), to make
+  room for **All games**.
+- Categories come from game-common's `game_categories.lua`, generated from the
+  fleet-wide `categories.json`: the 17 games released since 1.3.0 (Traffic
+  Jam, Pass the Word, Werewolf, Gamebooks, …) were filed under "Other".
+- Game names sort without regard to case or accents ("Échecs" among the e's).
+
 ## [1.3.0] - 2026-10-30
 
 ### Added

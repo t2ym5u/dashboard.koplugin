@@ -110,11 +110,29 @@ function Games.toggled(games, gid, saved, defaults)
 end
 
 -- Sort by the label the player actually reads, not by id.
+-- Sort key: lower case with the accents of Latin letters dropped, so that
+-- "Échecs" sorts among the e's rather than after z.
+local FOLD = {}
+for plain, accented in pairs({
+    a = "àáâãäåÀÁÂÃÄÅ", c = "çÇ", e = "èéêëÈÉÊË", i = "ìíîïÌÍÎÏ", n = "ñÑ",
+    o = "òóôõöÒÓÔÕÖ", u = "ùúûüÙÚÛÜ", y = "ýÿÝ",
+}) do
+    for ch in accented:gmatch("[\xC0-\xDF][\x80-\xBF]") do FOLD[ch] = plain end
+end
+
+function Games.sortKey(label)
+    return (label:gsub("[\xC0-\xDF][\x80-\xBF]", FOLD)):lower()
+end
+
+-- Alphabetical by label (sortKey), then by id.
+local function label_lt(a, b)
+    local ka, kb = Games.sortKey(a.label), Games.sortKey(b.label)
+    if ka ~= kb then return ka < kb end
+    return a.id < b.id
+end
+
 function Games.sorted(games)
-    table.sort(games, function(a, b)
-        if a.label ~= b.label then return a.label < b.label end
-        return a.id < b.id
-    end)
+    table.sort(games, label_lt)
     return games
 end
 
@@ -254,8 +272,7 @@ function Games.arrange(games, opts)
     local function custom_lt(a, b)
         local pa, pb = pos[a.id] or big, pos[b.id] or big
         if pa ~= pb then return pa < pb end
-        if a.label ~= b.label then return a.label < b.label end
-        return a.id < b.id
+        return label_lt(a, b)
     end
     local lt = custom_lt
     if opts.mode == "recent" then

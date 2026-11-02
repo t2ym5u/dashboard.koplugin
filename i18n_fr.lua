@@ -38,6 +38,14 @@ return {
     ["%1 is not installed or not active."]   = { fr = "%1 n'est pas installé ou pas activé.", es = "%1 no está instalado o no está activo.", de = "%1 ist nicht installiert oder nicht aktiv." },
     ["Open the game menu and choose Daily Challenge."] = { fr = "Ouvrez le menu du jeu et choisissez Défi du jour.", es = "Abre el menú del juego y elige Desafío diario.", de = "Öffne das Spielmenü und wähle Tägliche Herausforderung." },
 
+    -- All games
+    ["All games"]                            = { fr = "Tous les jeux", es = "Todos los juegos", de = "Alle Spiele" },
+    ["Categories"]                           = { fr = "Catégories", es = "Categorías", de = "Kategorien" },
+    ["%1 games"]                             = { fr = "%1 jeux", es = "%1 juegos", de = "%1 Spiele" },
+    ["Choose a category."]                   = { fr = "Choisissez une catégorie.", es = "Elige una categoría.", de = "Wähle eine Kategorie." },
+    ["Tap a game to play it, hold it to add it to the dashboard or remove it."] = { fr = "Touchez un jeu pour y jouer, appui long pour l'ajouter au tableau de bord ou l'en retirer.", es = "Toca un juego para jugar; mantén pulsado para añadirlo al panel o quitarlo.", de = "Tippe auf ein Spiel, um es zu spielen; lange drücken, um es zur Übersicht hinzuzufügen oder zu entfernen." },
+    ["No games installed."]                  = { fr = "Aucun jeu installé.", es = "No hay juegos instalados.", de = "Keine Spiele installiert." },
+
     -- Choose games
     ["Done"]                                 = { fr = "Terminé", es = "Hecho", de = "Fertig" },
     ["%1 of %2 shown"]                       = { fr = "%1 sur %2 affichés", es = "%1 de %2 visibles", de = "%1 von %2 angezeigt" },
