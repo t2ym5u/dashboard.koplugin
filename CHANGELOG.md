@@ -6,6 +6,12 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.4.1] - 2026-11-02
+
+### Changed
+- Picks up game-common 1.10.0: the shared Tools → Games menu also lists
+  the games' new "· multiplayer" entries under Party & quiz.
+
 ## [1.4.0] - 2026-11-02
 
 ### Added
