@@ -46,6 +46,36 @@ describe("Daily.candidates", function()
         assert.are.same({ "kenken", "sudoku", "tents" }, ids(D.candidates(GAMES, shown)))
     end)
 
+    it("draws from every daily-capable game while the player has not chosen the shown games", function()
+        -- the default shown set (sudoku, 2048, minesweeper, mastermind) has
+        -- only one daily game: it must not make the challenge sudoku every day
+        local defaults = function(id) return id == "sudoku" or id == "chess" end
+        assert.are.same({ "kenken", "sudoku", "tents" },
+                        ids(D.candidates(GAMES, D.shownFilter(nil, defaults))))
+    end)
+
+    it("never overrides an explicit choice of shown games", function()
+        local shown = function(id) return id == "sudoku" or id == "chess" end
+        local saved = { sudoku = true, chess = true, kenken = false, tents = false }
+        assert.are.same({ "sudoku" }, ids(D.candidates(GAMES, D.shownFilter(saved, shown))))
+    end)
+
+    it("the default pool visits every daily game before a repeat, same game all day", function()
+        local games = {}
+        for i = 1, 25 do games[i] = { id = string.format("g%02d", i), daily = "screen" } end
+        games[26] = { id = "chess" }
+        local pool = D.candidates(games, D.shownFilter(nil, function() return false end))
+        assert.are.equal(25, #pool)
+        local start = D.dayNumber{ year = 2026, month = 11, day = 3 }
+        local seen = {}
+        for day = start, start + 24 do
+            local g = D.pick(pool, day, D.AUTO)
+            assert.is_nil(seen[g.id], "repeat on day " .. day)
+            seen[g.id] = true
+            assert.are.equal(g, D.pick(D.candidates(games, nil), day, nil))
+        end
+    end)
+
     it("is empty when no installed game has a daily mode", function()
         assert.are.same({}, D.candidates({ { id = "chess" } }, function() return true end))
     end)

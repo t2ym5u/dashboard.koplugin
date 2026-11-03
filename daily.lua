@@ -18,11 +18,16 @@ function Daily.dayNumber(t)
     return math.floor((noon - epoch) / 86400 + 0.5)
 end
 
--- The pool to pick from: the daily-capable games the player shows on the
--- dashboard, or, when none of those has a daily mode, every daily-capable
--- installed game -- so the tile is never empty just because the player's
--- favourites are all board games. Sorted by id, so the pick does not depend
--- on the filesystem's listing order.
+-- The pool to pick from, sorted by id so the pick does not depend on the
+-- filesystem's listing order:
+--   * `shown` nil (the player has never chosen which games the dashboard
+--     shows): every daily-capable installed game. The default shown set is
+--     sudoku/2048/minesweeper/mastermind, of which only sudoku has a daily
+--     mode -- drawing from it made the Daily Challenge sudoku every day.
+--   * `shown` given (an explicit choice): the daily-capable games among
+--     those, or every daily-capable game when none of them has a daily mode,
+--     so the tile is never empty just because the player's favourites are
+--     all board games.
 function Daily.candidates(games, shown)
     local fav, all = {}, {}
     for _, g in ipairs(games) do
@@ -34,6 +39,14 @@ function Daily.candidates(games, shown)
     local pool = #fav > 0 and fav or all
     table.sort(pool, function(a, b) return a.id < b.id end)
     return pool
+end
+
+-- The `shown` filter for candidates(): nil while the player has not chosen
+-- the dashboard's games (`saved_shown`, the shown_games setting, is nil), so
+-- the rotation goes through every daily-capable game; `shown` once they have.
+function Daily.shownFilter(saved_shown, shown)
+    if saved_shown == nil then return nil end
+    return shown
 end
 
 -- Today's game. `chosen` is the daily_game setting: AUTO (or nil) rotates

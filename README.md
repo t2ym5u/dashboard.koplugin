@@ -65,9 +65,12 @@ your six most recently played games — until you change anything in **Choose
 games**, which then fixes the list. A game installed later is hidden unless
 it is one of those defaults.
 
-The Daily Challenge is drawn from the games on your dashboard that have a
-daily mode (the ones with **Daily Challenge** in their own menu); if none of
-them has one, from every installed game that does.
+The Daily Challenge is drawn from every installed game that has a daily mode
+(the ones with **Daily Challenge** in their own menu). Once you have chosen
+your games in **Choose games**, it is drawn from the ones on your dashboard
+that have a daily mode instead; if none of them has one, from every installed
+game that does. Either way it is the same game all day, and every game of the
+pool comes up once before any repeats.
 
 ## Migrating from Startup Menu
 
