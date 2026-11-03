@@ -592,7 +592,9 @@ function Dashboard:buildModel()
     if rg then model.resume = { game = rg, ts = rts } end
 
     local day = Daily.dayNumber(os.date("*t"))
-    local dg = Daily.pick(Daily.candidates(games, shown), day,
+    local pool = Daily.candidates(games,
+        Daily.shownFilter(self:getSetting("shown_games", nil), shown))
+    local dg = Daily.pick(pool, day,
                           self:getSetting("daily_game", Daily.AUTO), games)
     if dg then
         model.daily = { game = dg, done = Daily.isDone(self:getSetting("daily_done"), day, dg.id) }

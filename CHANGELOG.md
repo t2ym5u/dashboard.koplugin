@@ -6,6 +6,15 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.5.0] - 2026-11-03
+
+### Changed
+- **Daily Challenge**: until you choose your games in **Choose games**, the
+  automatic rotation now goes through every installed game that has a daily
+  mode — one a day, each once before any repeats — instead of being Sudoku
+  every day (the default dashboard games had no other daily game). A list of
+  games you chose yourself, or a game pinned in the settings, is kept as it is.
+
 ## [1.4.1] - 2026-11-02
 
 ### Changed
