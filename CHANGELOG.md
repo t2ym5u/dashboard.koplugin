@@ -6,6 +6,13 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.5.1] - 2026-11-03
+
+### Fixed
+- The new utilities (Calculator, Unit converter, Stopwatch & timer,
+  Calendar, Quick reference) and Book Drop are not offered as games in the
+  game grid or the recently played list.
+
 ## [1.5.0] - 2026-11-03
 
 ### Changed
