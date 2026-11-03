@@ -18,6 +18,12 @@ Games.NON_GAME_IDS = {
     pluginmanager = true,
     dashboard     = true,
     opdsdir       = true,
+    bookdrop      = true,
+    quickcalc     = true,
+    converter     = true,
+    stopwatch     = true,
+    almanac       = true,
+    reference     = true,
     _skeleton     = true,
 }
 
