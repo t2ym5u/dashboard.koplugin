@@ -91,6 +91,35 @@ function Games.dailyKind(main_src, screen_src)
     return nil
 end
 
+-- dailyKind() needs a game's main.lua and screen.lua, about 2 MB of Lua
+-- across the fleet: reading all of it on every launch took most of a second
+-- on a Kobo. The answer only changes when one of those files does, so it is
+-- cached, keyed on the game's version and both files' modification time and
+-- size (a stat, no read). `meta_src` is the _meta.lua already read for the
+-- label; `main_attr` / `screen_attr` are lfs.attributes() tables or nil.
+function Games.dailyCacheKey(meta_src, main_attr, screen_attr)
+    local version = type(meta_src) == "string"
+        and meta_src:match("%f[%w]version%s*=%s*[\"']([^\"'\n]*)[\"']") or "?"
+    local function stamp(a)
+        if type(a) ~= "table" then return "-" end
+        return tostring(a.modification) .. ":" .. tostring(a.size)
+    end
+    return version .. "|" .. stamp(main_attr) .. "|" .. stamp(screen_attr)
+end
+
+-- The daily kind of game `id` from `cache` (id -> { key, daily }), or calls
+-- compute() and records the answer. Returns the kind (or nil) and whether
+-- the cache changed. A game without a daily mode is stored as false.
+function Games.cachedDailyKind(cache, id, key, compute)
+    local e = cache[id]
+    if type(e) == "table" and e.key == key then
+        return e.daily or nil, false
+    end
+    local kind = compute()
+    cache[id] = { key = key, daily = kind or false }
+    return kind, true
+end
+
 -- Does game `gid` belong in the grid?
 -- `saved` is the persisted id -> boolean map, or nil when the player has never
 -- opened the game list. A game absent from a saved map is one installed since

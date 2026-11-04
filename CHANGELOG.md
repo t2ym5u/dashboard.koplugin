@@ -6,6 +6,17 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.6.0] - 2026-11-04
+
+### Changed
+- Faster first opening: to find which games have a Daily Challenge, the
+  dashboard read every game's main.lua and screen.lua (about 2 MB across
+  the collection, most of a second on a Kobo) each time KOReader started.
+  It now remembers the answer in `settings/dashboard_daily_cache.lua` and
+  only reads a game's files again when its version or those files change:
+  the scan went from about 25-35 ms to about 5 ms on a desktop, and reads
+  about 20 KB instead of 2 MB. The list of daily games is the same.
+
 ## [1.5.1] - 2026-11-03
 
 ### Fixed
