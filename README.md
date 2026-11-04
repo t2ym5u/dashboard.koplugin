@@ -22,7 +22,8 @@ targets, one repaint per page.
 - **Continue reading** — the last book you opened (title, author, progress
   bar); one tap reopens it. Hidden when there is no last book or the file is
   gone.
-- **Resume** — the game you played most recently, with when you last played.
+- **Resume** — the game you played most recently, with when you last played
+  (in the mode you last played it: alone, or with friends).
 - **Daily Challenge** — today's puzzle in one of your puzzle games. The game
   changes every day (every game of the pool once before any repeats), or you
   pin one in the settings. A ✓ shows once you have started today's challenge;
@@ -31,11 +32,20 @@ targets, one repaint per page.
   the screen width), grouped by category (Logic puzzles, Sudoku, Word games,
   Board games, Card & dice games, Classic puzzles, Party & quiz, Other), paged
   with ◀ ▶ or a horizontal swipe (or the page-turn keys).
+- **Multiplayer tiles** — a game with a mode for several players around one
+  reader (Wordle, Hangman, Boggle, Mental Math…, the ones listed again as
+  "· multiplayer" under Tools → Games) can also have its own tile,
+  "Wordle · multiplayer", that opens that mode directly. These tiles are
+  hidden until you tick them in **Choose games** (or hold them in **All
+  games**); they sit under Party & quiz. The game's own tile still opens
+  the one-player game, and each tile keeps its own "last played", so
+  **Last played first** sorts them apart.
 - **All games** — every installed game, one category at a time: pick a
   category, then tap a game to play it, or hold it to add it to the grid (or
   take it off — a ✓ marks the games on it).
-- **Choose games** — a full-screen list of every installed game, grouped like
-  the grid: tap a game to show or hide it, ▲ ▼ to change its place.
+- **Choose games** — a full-screen list of every installed game (and every
+  multiplayer mode), grouped like the grid: tap a game to show or hide it,
+  ▲ ▼ to change its place.
 - **Statistics** (title bar menu ☰) — the former dashboard list: reading
   history, recent games, sessions and play time per game, and quick actions
   (update plugins, back to the library).
@@ -63,7 +73,11 @@ Open **Tools → Dashboard**:
 Which games show by default: Sudoku, 2048, Minesweeper and Mastermind plus
 your six most recently played games — until you change anything in **Choose
 games**, which then fixes the list. A game installed later is hidden unless
-it is one of those defaults.
+it is one of those defaults. Multiplayer tiles are never added on their own:
+you pick them.
+
+The Daily Challenge is always a one-player puzzle: it opens the game's own
+mode, never the multiplayer one.
 
 The Daily Challenge is drawn from every installed game that has a daily mode
 (the ones with **Daily Challenge** in their own menu). Once you have chosen

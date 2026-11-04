@@ -104,6 +104,14 @@ end
 
 function AllGames:gameTile(g, m)
     local shown = self.dash:isShown(g.id)
+    if g.party_tile then
+        return Widgets.twoLineTile{
+            w = m.tile_w, label_h = m.label_h, size = SZ_TILE,
+            line1 = shown and ("\u{2713} " .. g.name) or g.name, line2 = g.mode_text,
+            callback = function() self:launch(g) end,
+            hold_callback = function() self:toggleShown(g.id) end,
+        }
+    end
     return Button:new{
         text           = shown and ("\u{2713} " .. g.label) or g.label,
         width          = m.tile_w,
@@ -112,6 +120,7 @@ function AllGames:gameTile(g, m)
         radius         = Size.radius.button,
         padding_h      = Size.padding.default,
         text_font_size = SZ_TILE,
+        avoid_text_truncation = true, -- shrink, then wrap, long names
         callback       = function() self:launch(g) end,
         hold_callback  = function() self:toggleShown(g.id) end,
     }

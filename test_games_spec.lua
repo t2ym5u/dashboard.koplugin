@@ -242,23 +242,234 @@ describe("Games daily-kind cache", function()
 
     it("computes once, then answers from the cache until the key changes", function()
         local cache, calls = {}, 0
-        local function compute() calls = calls + 1; return "screen" end
-        local kind, miss = Games.cachedDailyKind(cache, "tents", "k1", compute)
-        assert.are.equal("screen", kind); assert.is_true(miss)
-        kind, miss = Games.cachedDailyKind(cache, "tents", "k1", compute)
-        assert.are.equal("screen", kind); assert.is_false(miss)
+        local function compute() calls = calls + 1; return "screen", true end
+        local kind, party, miss = Games.cachedInfo(cache, "tents", "k1", compute)
+        assert.are.equal("screen", kind); assert.is_true(party); assert.is_true(miss)
+        kind, party, miss = Games.cachedInfo(cache, "tents", "k1", compute)
+        assert.are.equal("screen", kind); assert.is_true(party); assert.is_false(miss)
         assert.are.equal(1, calls)
-        Games.cachedDailyKind(cache, "tents", "k2", compute)
+        Games.cachedInfo(cache, "tents", "k2", compute)
         assert.are.equal(2, calls)
     end)
 
-    it("caches a game without a daily mode as false and returns nil for it", function()
+    it("caches a game without a daily or party mode as false and returns nil/false", function()
         local cache = {}
-        local kind = Games.cachedDailyKind(cache, "hanoi", "k", function() return nil end)
-        assert.is_nil(kind)
-        assert.is_false(cache.hanoi.daily)
-        local again, miss = Games.cachedDailyKind(cache, "hanoi", "k", function() error("no") end)
-        assert.is_nil(again); assert.is_false(miss)
+        local kind, party = Games.cachedInfo(cache, "hanoi", "k", function() return nil, false end)
+        assert.is_nil(kind); assert.is_false(party)
+        assert.is_false(cache.hanoi.daily); assert.is_false(cache.hanoi.party)
+        local again, p2, miss = Games.cachedInfo(cache, "hanoi", "k", function() error("no") end)
+        assert.is_nil(again); assert.is_false(p2); assert.is_false(miss)
+    end)
+
+    it("re-reads a 1.6.0 entry, which has no party field, even with a matching key", function()
+        -- Upgrading from 1.6.0: the key still matches, but the entry predates
+        -- party detection; trusting it would hide every multiplayer tile.
+        local cache = { wordle = { key = "k", daily = "screen" } }
+        local kind, party, miss = Games.cachedInfo(cache, "wordle", "k",
+            function() return "screen", true end)
+        assert.are.equal("screen", kind); assert.is_true(party); assert.is_true(miss)
+        assert.is_true(cache.wordle.party)
+    end)
+
+    it("re-detects the party mode when main.lua changes (new key)", function()
+        local cache = {}
+        Games.cachedInfo(cache, "hangman", "1.0|1:1|-", function() return nil, false end)
+        local _k, party, miss = Games.cachedInfo(cache, "hangman", "1.1|2:5|-",
+            function() return nil, true end)
+        assert.is_true(party); assert.is_true(miss)
+    end)
+end)
+
+describe("Games.partyMode", function()
+    local Games
+    setup(function() Games = require("games") end)
+
+    it("finds party_mode = true in a plugin class declaration", function()
+        assert.is_true(Games.partyMode([[
+local Wordle = PluginBase:extend{
+    name       = "wordle",
+    menu_text  = _("Wordle"),
+    party_mode = true,
+}]]))
+        assert.is_true(Games.partyMode("self.party_mode=true"))
+    end)
+
+    it("says no for a game without one, false, or another key ending in party_mode", function()
+        assert.is_false(Games.partyMode('local G = PluginBase:extend{ name = "hanoi" }'))
+        assert.is_false(Games.partyMode("party_mode = false"))
+        assert.is_false(Games.partyMode("no_party_mode = true"))
+        assert.is_false(Games.partyMode(nil))
+    end)
+
+    it("detects the fleet's real party games from their main.lua", function()
+        local root = DIR .. "../"
+        local f = io.open(root .. "wordle.koplugin/main.lua")
+        if not f then return end -- not in the monorepo checkout
+        local src = f:read("*a"); f:close()
+        assert.is_true(Games.partyMode(src))
+        f = io.open(root .. "sudoku.koplugin/main.lua")
+        if f then
+            src = f:read("*a"); f:close()
+            assert.is_false(Games.partyMode(src))
+        end
+    end)
+end)
+
+describe("Games multiplayer tiles", function()
+    local Games
+    setup(function() Games = require("games") end)
+
+    local function tiles()
+        return Games.withPartyTiles({
+            { id = "wordle", label = "Wordle", party = true },
+            { id = "sudoku", label = "Sudoku" },
+            { id = "anagram", label = "Anagram", party = true },
+        }, "%1 · multiplayer")
+    end
+
+    it("adds one party tile per party game, next to it, launching the party mode", function()
+        local t = tiles()
+        local ids = {}
+        for i, g in ipairs(t) do ids[i] = g.id end
+        assert.are.same({ "anagram", "anagram:party", "sudoku", "wordle", "wordle:party" }, ids)
+        local p = t[5]
+        assert.are.equal("wordle", p.base_id)
+        assert.are.equal("Wordle ·\u{00A0}multiplayer", p.label)
+        assert.are.equal("Wordle", p.name)
+        assert.are.equal("· multiplayer", p.mode_text)
+        assert.are.equal("party", p.category)
+        assert.are.equal("party", p.mode)
+        assert.is_true(p.party_tile)
+    end)
+
+    it("launches a party game's own tile in solo mode, and other games with no mode", function()
+        local t = tiles()
+        assert.are.equal("solo", t[4].mode)   -- wordle
+        assert.is_nil(t[3].mode)              -- sudoku: showGame() takes no mode
+    end)
+
+    it("labels a party tile so it wraps before the mode, not inside it", function()
+        local NB = "\u{00A0}"
+        assert.are.equal("Wordle ·" .. NB .. "multiplayer",
+            Games.partyLabel("%1 · multiplayer", "Wordle"))
+        assert.are.equal("Chiffres et Lettres ·" .. NB .. "à" .. NB .. "plusieurs",
+            Games.partyLabel("%1 · à plusieurs", "Chiffres et Lettres"))
+        assert.are.equal("Galgenmännchen ·" .. NB .. "mehrere" .. NB .. "Spieler",
+            Games.partyLabel("%1 · mehrere Spieler", "Galgenmännchen"))
+        assert.are.equal("· à plusieurs", Games.partyModeText("%1 · à plusieurs"))
+        assert.are.equal("Multi :", Games.partyModeText("Multi : %1"))
+        -- A name containing "%" is not a pattern.
+        assert.are.equal("100% ·" .. NB .. "x", Games.partyLabel("%1 · x", "100%"))
+    end)
+
+    it("recognises party tile ids", function()
+        assert.is_true(Games.isPartyId("wordle:party"))
+        assert.is_false(Games.isPartyId("wordle"))
+        assert.is_false(Games.isPartyId(nil))
+    end)
+
+    it("hides party tiles by default, even with no saved choice", function()
+        local defaults = Games.withRecent(Games.DEFAULT_ENABLED,
+            { wordle = 50, ["wordle:party"] = 60 }, 6)
+        assert.is_true(Games.isEnabled("wordle", nil, defaults))
+        assert.is_false(Games.isEnabled("wordle:party", nil, defaults))
+        -- A choice saved before 1.7.0 has no entry for it either.
+        assert.is_false(Games.isEnabled("wordle:party", { wordle = true, sudoku = true }, defaults))
+    end)
+
+    it("withRecent never adds a party tile, however recent", function()
+        local out = Games.withRecent({}, { ["wordle:party"] = 99, hanoi = 1 }, 5)
+        assert.is_nil(out["wordle:party"])
+        assert.is_true(out.hanoi)
+    end)
+
+    it("toggling a party tile shows it, persisted as an explicit entry", function()
+        local t = tiles()
+        local saved = Games.toggled(t, "wordle:party", nil, Games.DEFAULT_ENABLED)
+        assert.is_true(saved["wordle:party"])
+        assert.is_false(saved["anagram:party"])
+        assert.is_true(saved.sudoku)                     -- default kept
+        assert.is_true(Games.isEnabled("wordle:party", saved))
+        -- ... and toggling it again hides it without touching the solo tile.
+        local again = Games.toggled(t, "wordle:party", saved)
+        assert.is_false(again["wordle:party"])
+        assert.are.equal(saved.wordle, again.wordle)
+    end)
+
+    it("files party tiles under the party category when grouped", function()
+        local t = tiles()
+        local cats = { wordle = "words", anagram = "words", sudoku = "logic" }
+        local function category_of(id)
+            for _i, g in ipairs(t) do if g.id == id then return g.category or cats[id] end end
+        end
+        local secs = Games.arrange(t, {
+            mode = "custom", grouped = true, category_of = category_of,
+            rank = function(c) return ({ logic = 1, words = 2, party = 3 })[c] end,
+        })
+        assert.are.equal("party", secs[3].category)
+        assert.are.equal("anagram:party", secs[3].games[1].id)
+        assert.are.equal("wordle:party", secs[3].games[2].id)
+    end)
+end)
+
+describe("Games.tilesLastPlayed", function()
+    local Games
+    setup(function() Games = require("games") end)
+
+    local function tiles()
+        return Games.withPartyTiles({
+            { id = "wordle", label = "Wordle", party = true },
+            { id = "sudoku", label = "Sudoku" },
+        }, "%1 · multiplayer")
+    end
+
+    it("reads each mode's own timestamp, so the two tiles do not mirror each other", function()
+        local lp = Games.tilesLastPlayed(tiles(), {
+            wordle = { last_played = 300, last_solo_played = 100, last_party_played = 300 },
+        }, { wordle = 400 })
+        assert.are.equal(100, lp.wordle)
+        assert.are.equal(300, lp["wordle:party"])
+    end)
+
+    it("falls back to last_played for the solo tile when it is later than the last party game", function()
+        local lp = Games.tilesLastPlayed(tiles(), {
+            wordle = { last_played = 500, last_party_played = 300 },
+        })
+        assert.are.equal(500, lp.wordle)
+        -- A game played before per-mode timestamps existed: all solo.
+        lp = Games.tilesLastPlayed(tiles(), { wordle = { last_played = 200 } })
+        assert.are.equal(200, lp.wordle)
+        assert.is_nil(lp["wordle:party"])
+    end)
+
+    it("does not credit the solo tile with a party session", function()
+        local lp = Games.tilesLastPlayed(tiles(), {
+            wordle = { last_played = 300, last_party_played = 300 },
+        }, { wordle = 310 })
+        assert.is_nil(lp.wordle)
+        assert.are.equal(300, lp["wordle:party"])
+    end)
+
+    it("keeps the old rule for games without a party mode, mtime included", function()
+        local lp = Games.tilesLastPlayed(tiles(), { sudoku = { last_played = 50 } }, { sudoku = 60 })
+        assert.are.equal(60, lp.sudoku)
+        lp = Games.tilesLastPlayed(tiles(), {}, { wordle = 70 })
+        assert.are.equal(70, lp.wordle)   -- no stats row: the settings mtime
+        assert.is_nil(lp["wordle:party"])
+    end)
+
+    it("orders the grid by the right field in last-played-first mode", function()
+        local t = tiles()
+        local lp = Games.tilesLastPlayed(t, {
+            wordle = { last_played = 900, last_solo_played = 100, last_party_played = 900 },
+            sudoku = { last_played = 500 },
+        })
+        local secs = Games.arrange(t, { mode = "recent", last_played = lp })
+        local ids = {}
+        for i, g in ipairs(secs[1].games) do ids[i] = g.id end
+        assert.are.same({ "wordle:party", "sudoku", "wordle" }, ids)
+        -- Resume follows the mode played last.
+        assert.are.equal("wordle:party", (Games.mostRecent(t, lp)).id)
     end)
 end)
 

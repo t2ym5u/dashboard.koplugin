@@ -188,6 +188,13 @@ function HomeScreen:sectionHeader(w, label)
 end
 
 function HomeScreen:tile(g, gm)
+    if g.party_tile then
+        return Widgets.twoLineTile{
+            w = gm.tile_w, label_h = gm.label_h, size = SZ_TILE,
+            line1 = g.name, line2 = g.mode_text,
+            callback = function() self.dash:launchGame(g) end,
+        }
+    end
     return Button:new{
         text           = g.label,
         width          = gm.tile_w,
@@ -196,6 +203,9 @@ function HomeScreen:tile(g, gm)
         radius         = Size.radius.button,
         padding_h      = Size.padding.default,
         text_font_size = SZ_TILE,
+        -- Long names ("Mots croisés · à plusieurs") shrink a little, then
+        -- wrap onto two lines, rather than lose their end to an ellipsis.
+        avoid_text_truncation = true,
         callback       = function() self.dash:launchGame(g) end,
     }
 end
