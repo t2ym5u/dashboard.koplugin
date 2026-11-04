@@ -224,6 +224,44 @@ describe("Games.dailyKind", function()
     end)
 end)
 
+describe("Games daily-kind cache", function()
+    local Games
+    setup(function() Games = require("games") end)
+
+    local META = 'return { fullname = _("Tents"), version = "1.5.0" }'
+    local A1 = { modification = 100, size = 2000 }
+    local A2 = { modification = 200, size = 3000 }
+
+    it("keys on the version and both files' stamps", function()
+        local k = Games.dailyCacheKey(META, A1, A2)
+        assert.are.equal("1.5.0|100:2000|200:3000", k)
+        assert.are_not.equal(k, Games.dailyCacheKey(META:gsub("1.5.0", "1.5.1"), A1, A2))
+        assert.are_not.equal(k, Games.dailyCacheKey(META, A1, { modification = 200, size = 3001 }))
+        assert.are.equal("?|-|-", Games.dailyCacheKey(nil, nil, nil))
+    end)
+
+    it("computes once, then answers from the cache until the key changes", function()
+        local cache, calls = {}, 0
+        local function compute() calls = calls + 1; return "screen" end
+        local kind, miss = Games.cachedDailyKind(cache, "tents", "k1", compute)
+        assert.are.equal("screen", kind); assert.is_true(miss)
+        kind, miss = Games.cachedDailyKind(cache, "tents", "k1", compute)
+        assert.are.equal("screen", kind); assert.is_false(miss)
+        assert.are.equal(1, calls)
+        Games.cachedDailyKind(cache, "tents", "k2", compute)
+        assert.are.equal(2, calls)
+    end)
+
+    it("caches a game without a daily mode as false and returns nil for it", function()
+        local cache = {}
+        local kind = Games.cachedDailyKind(cache, "hanoi", "k", function() return nil end)
+        assert.is_nil(kind)
+        assert.is_false(cache.hanoi.daily)
+        local again, miss = Games.cachedDailyKind(cache, "hanoi", "k", function() error("no") end)
+        assert.is_nil(again); assert.is_false(miss)
+    end)
+end)
+
 describe("Games.withRecent", function()
     local Games
     setup(function() Games = require("games") end)

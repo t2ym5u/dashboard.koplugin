@@ -99,12 +99,29 @@ local function read_file(path)
     return src
 end
 
+-- Each game's daily kind, cached across runs (Games.dailyCacheKey says why):
+-- its own small file, so that no Dashboard instance's copy of dashboard.lua
+-- can write a stale one over it. A missing or unreadable file only costs one
+-- full scan.
+local DAILY_CACHE_FILE = "dashboard_daily_cache.lua"
+
+local function open_daily_cache()
+    local ok, s = pcall(LuaSettings.open, LuaSettings,
+        DataStorage:getSettingsDir() .. "/" .. DAILY_CACHE_FILE)
+    if not ok or not s then return nil, {} end
+    local t = s:readSetting("games")
+    return s, type(t) == "table" and t or {}
+end
+
 -- Every installed game of this fleet, as { id, label, category, daily },
 -- sorted by label. Ported from startmenu's scan.
 local function scan_games()
     if scanned_games then return scanned_games end
     local games = {}
     local lfs = get_lfs()
+    local cache_file, cache = open_daily_cache()
+    -- Rebuilt from the games found, so uninstalled ones drop out of it.
+    local fresh, changed = {}, false
     local ok, iter, dobj
     if lfs then ok, iter, dobj = pcall(lfs.dir, _plugins_dir) end
     if ok and iter then
@@ -128,12 +145,27 @@ local function scan_games()
                     -- after every plugin's main.lua ran).
                     g.label = _(g.label)
                     g.category = Categories.of(id)
-                    g.daily = Games.dailyKind(read_file(pdir .. "/main.lua"),
-                                              read_file(pdir .. "/screen.lua"))
+                    local key = Games.dailyCacheKey(meta,
+                        lfs.attributes(pdir .. "/main.lua"),
+                        lfs.attributes(pdir .. "/screen.lua"))
+                    local kind, miss = Games.cachedDailyKind(cache, id, key, function()
+                        return Games.dailyKind(read_file(pdir .. "/main.lua"),
+                                               read_file(pdir .. "/screen.lua"))
+                    end)
+                    g.daily = kind
+                    fresh[id] = cache[id]
+                    if miss then changed = true end
                     games[#games + 1] = g
                 end
             end
         end
+    end
+    for id in pairs(cache) do
+        if not fresh[id] then changed = true; break end
+    end
+    if changed and cache_file then
+        cache_file:saveSetting("games", fresh)
+        pcall(cache_file.flush, cache_file)
     end
     scanned_games = Games.sorted(games)
     return scanned_games
