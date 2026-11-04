@@ -14,6 +14,16 @@ local function lrequire(name)
     return package.loaded[key]
 end
 
+-- Shared modules (common/) are cached by name for every plugin at once: the
+-- guard makes sure an outdated copy, loaded by an old plugin still installed,
+-- is not the one this plugin gets (see common/module_guard.lua). Loaded by
+-- path, so no other plugin's copy can stand in for it.
+local function noop() end
+local guard_chunk = loadfile(_dir .. "common/module_guard.lua")
+local guard = guard_chunk and guard_chunk()(_dir .. "common/", "game_common_version.lua")
+    or { enter = noop, leave = noop }
+guard.enter()
+
 local Blitbuffer      = require("ffi/blitbuffer")
 local DataStorage     = require("datastorage")
 local LuaSettings     = require("luasettings")
@@ -1076,5 +1086,7 @@ function Dashboard:showStats(_home)
 
     UIManager:show(menu_widget)
 end
+
+guard.leave()
 
 return Dashboard
