@@ -6,6 +6,7 @@
 
 local Blitbuffer      = require("ffi/blitbuffer")
 local Button          = require("ui/widget/button")
+local CenterContainer = require("ui/widget/container/centercontainer")
 local Font            = require("ui/font")
 local FrameContainer  = require("ui/widget/container/framecontainer")
 local Geom            = require("ui/geometry")
@@ -36,7 +37,8 @@ end
 
 -- An invisible tap target around any widget.
 local Tappable = InputContainer:extend{
-    callback = nil,
+    callback      = nil,
+    hold_callback = nil,
 }
 
 function Tappable:init()
@@ -47,10 +49,20 @@ function Tappable:init()
             GestureRange:new{ ges = "tap", range = function() return self.dimen end },
         },
     }
+    if self.hold_callback then
+        self.ges_events.HoldDashTarget = {
+            GestureRange:new{ ges = "hold", range = function() return self.dimen end },
+        }
+    end
 end
 
 function Tappable:onTapDashTarget()
     if self.callback then self.callback() end
+    return true
+end
+
+function Tappable:onHoldDashTarget()
+    if self.hold_callback then self.hold_callback() end
     return true
 end
 
@@ -107,6 +119,69 @@ function Widgets.card(w, min_h, lines, callback)
     }
     if not callback then return frame end
     return Tappable:new{ callback = callback, frame }
+end
+
+-- A game tile with two centred lines, drawn like the Button tiles beside it
+-- (same outer size, border and radius): `line1` bold, `line2` regular and a
+-- little smaller. For a multiplayer tile -- the game's name, then
+-- "· à plusieurs" -- which as one Button label wrapped inside the name and
+-- lost the mode to the ellipsis. Each line shrinks (the name down to 7
+-- points less) before it is truncated.
+--   o = { w =, label_h =, line1 =, line2 =, size =, callback =, hold_callback = }
+function Widgets.twoLineTile(o)
+    local bw = Size.border.thick
+    local pad_v = Size.padding.button
+    local inner_w = o.w - 2 * (bw + Size.padding.default)
+    local inner_h = o.label_h + 2 * pad_v
+    -- A TextWidget's box is the font's full line height (about 1.4 em),
+    -- room two lines in a Button-sized tile do not have: each line here gets
+    -- a 1.15 em box instead, its baseline moved up by half the difference,
+    -- as tight as a Button's own two-line TextBoxWidget (line_height = 0).
+    local function line(text, sz, bold, max_width)
+        local tw = TextWidget:new{ text = text, face = Widgets.face(sz), bold = bold,
+                                   max_width = max_width }
+        local full = tw:getSize().h
+        local h = math.ceil(tw.face.size * 1.15)
+        if h < full then
+            local base = tw:getBaseline()
+            tw:free()
+            tw = TextWidget:new{ text = text, face = Widgets.face(sz), bold = bold,
+                                 max_width = max_width, forced_height = h,
+                                 forced_baseline = base - math.floor((full - h) / 2) }
+        end
+        return tw
+    end
+    -- The largest size (down to 6 points less) at which `text` fits the
+    -- width; truncated at the smallest one otherwise.
+    local function fit(text, size, bold, min_size)
+        for sz = size, min_size + 1, -1 do
+            local tw = line(text, sz, bold)
+            if tw:getSize().w <= inner_w then return tw, sz end
+            tw:free()
+        end
+        return line(text, min_size, bold, inner_w), min_size
+    end
+    -- The second line stays smaller than the first, even when a long name
+    -- had to shrink.
+    local l1, l2
+    for sz = o.size, o.size - 6, -1 do
+        if l1 then l1:free(); l2:free() end
+        local s1
+        l1, s1 = fit(o.line1, sz, true, o.size - 7)
+        l2 = fit(o.line2, math.min(sz - 3, s1 - 2), false, o.size - 9)
+        if l1:getSize().h + l2:getSize().h <= inner_h - 2 * Size.padding.small then break end
+    end
+    local frame = FrameContainer:new{
+        bordersize = bw,
+        radius     = Size.radius.button,
+        padding    = 0,
+        background = Blitbuffer.COLOR_WHITE,
+        CenterContainer:new{
+            dimen = Geom:new{ w = o.w - 2 * bw, h = inner_h },
+            VerticalGroup:new{ align = "center", l1, l2 },
+        },
+    }
+    return Tappable:new{ callback = o.callback, hold_callback = o.hold_callback, frame }
 end
 
 -- A category header: bold label over a rule.

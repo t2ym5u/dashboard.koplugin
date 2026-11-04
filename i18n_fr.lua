@@ -19,7 +19,7 @@ return {
     ["No stats yet."]                        = { fr = "Aucune statistique pour l'instant.", es = "Sin estadísticas todavía.", de = "Noch keine Statistiken." },
     ["Actions"]                              = { fr = "Actions", es = "Acciones", de = "Aktionen" },
     ["Library"]                              = { fr = "Bibliothèque", es = "Biblioteca", de = "Bibliothek" },
-    ["Home button \xE2\x86\x92 Dashboard"]   = { fr = "Bouton Accueil → Tableau de bord", es = "Botón Inicio → Dashboard", de = "Home-Taste → Dashboard" },
+    ["Home button \xE2\x86\x92 Dashboard"]   = { fr = "Bouton Accueil → Tableau de bord", es = "Botón Inicio → Panel", de = "Home-Taste → Übersicht" },
     ["Games (Dashboard)"]                    = { fr = "Jeux (Dashboard)", es = "Juegos (Dashboard)", de = "Spiele (Dashboard)" },
     ["Games"]                                = { fr = "Jeux", es = "Juegos", de = "Spiele" },
     ["Suggestion"]                           = { fr = "Suggestion", es = "Sugerencia", de = "Vorschlag" },
@@ -45,6 +45,9 @@ return {
     ["Choose a category."]                   = { fr = "Choisissez une catégorie.", es = "Elige una categoría.", de = "Wähle eine Kategorie." },
     ["Tap a game to play it, hold it to add it to the dashboard or remove it."] = { fr = "Touchez un jeu pour y jouer, appui long pour l'ajouter au tableau de bord ou l'en retirer.", es = "Toca un juego para jugar; mantén pulsado para añadirlo al panel o quitarlo.", de = "Tippe auf ein Spiel, um es zu spielen; lange drücken, um es zur Übersicht hinzuzufügen oder zu entfernen." },
     ["No games installed."]                  = { fr = "Aucun jeu installé.", es = "No hay juegos instalados.", de = "Keine Spiele installiert." },
+
+    -- Multiplayer tiles (same values as game-common's Tools → Games entry)
+    ["%1 · multiplayer"]                     = { fr = "%1 · à plusieurs", es = "%1 · multijugador", de = "%1 · mehrere Spieler" },
 
     -- Choose games
     ["Done"]                                 = { fr = "Terminé", es = "Hecho", de = "Fertig" },

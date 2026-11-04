@@ -6,6 +6,38 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.7.0] - 2026-11-04
+
+### Added
+- **Multiplayer tiles**: every installed game with a mode for several
+  players (the ones listed again as "· multiplayer" / « · à plusieurs »
+  under Tools → Games) can have a second tile, "Wordle · multiplayer", that
+  opens that mode directly. They are hidden by default — tick them in
+  **Choose games** or hold them in **All games** — and sit under Party &
+  quiz. The tile shows the game's name with the mode on a second line.
+
+### Changed
+- The two tiles of such a game no longer share one "last played": the
+  multiplayer tile uses the last multiplayer session, the game's own tile
+  the last one-player session, so **Last played first** and **Resume**
+  follow the mode actually played (Resume reopens that mode).
+- A game's own tile, Resume, the Daily Challenge, the statistics page and
+  the simpleui row always open the one-player mode, even right after a
+  multiplayer game (the game used to remember the mode last opened).
+- Long game names on tiles shrink a little, then wrap onto two lines,
+  instead of being cut off with "…".
+- Which games have a multiplayer mode is remembered with the daily-mode
+  answer in `settings/dashboard_daily_cache.lua`; the cache from 1.6.0 is
+  read again once.
+- Spanish and German for "Home button → Dashboard" now use the dashboard's
+  own name ("Panel", "Übersicht").
+- Uses less memory: the All games and Choose games screens load when you
+  open them, not when KOReader starts.
+
+### Fixed
+- "Update plugins" in the menu now starts Plugin Manager's update (it
+  called a function that does not exist and did nothing).
+
 ## [1.6.0] - 2026-11-04
 
 ### Changed

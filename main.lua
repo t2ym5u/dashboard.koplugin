@@ -51,11 +51,21 @@ local Layout      = lrequire("layout")
 local Startup     = lrequire("startup")
 local Widgets     = lrequire("widgets")
 local HomeScreen  = lrequire("home_screen")
-local ChooseGames = lrequire("games_screen")
-local AllGames    = lrequire("all_games_screen")
 HomeScreen.setModules(Layout, Format, Widgets)
-ChooseGames.setModules(Layout, Widgets)
-AllGames.setModules(Layout, Widgets)
+
+-- The "All games" and "Choose games" screens load the first time they are
+-- opened, not with the plugin: KOReader loads every plugin at startup and
+-- keeps it all session, and most sessions never open them.
+local function ChooseGames()
+    local m = lrequire("games_screen")
+    m.setModules(Layout, Widgets)
+    return m
+end
+local function AllGames()
+    local m = lrequire("all_games_screen")
+    m.setModules(Layout, Widgets)
+    return m
+end
 
 local reltime     = Format.reltime
 local fmt_seconds = Format.fmt_seconds
@@ -78,8 +88,9 @@ local RECENT_DEFAULTS = 6
 local instance_seen = false
 
 -- Installed games, scanned once per run: installing or removing a plugin
--- needs a restart to take effect anyway.
-local scanned_games
+-- needs a restart to take effect anyway. scanned_tiles adds the multiplayer
+-- tiles (Games.withPartyTiles) and tile_by_id indexes it.
+local scanned_games, scanned_tiles, tile_by_id
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Data collection
@@ -99,7 +110,8 @@ local function read_file(path)
     return src
 end
 
--- Each game's daily kind, cached across runs (Games.dailyCacheKey says why):
+-- Each game's daily kind and party mode, cached across runs
+-- (Games.dailyCacheKey says why):
 -- its own small file, so that no Dashboard instance's copy of dashboard.lua
 -- can write a stale one over it. A missing or unreadable file only costs one
 -- full scan.
@@ -113,7 +125,7 @@ local function open_daily_cache()
     return s, type(t) == "table" and t or {}
 end
 
--- Every installed game of this fleet, as { id, label, category, daily },
+-- Every installed game of this fleet, as { id, label, category, daily, party },
 -- sorted by label. Ported from startmenu's scan.
 local function scan_games()
     if scanned_games then return scanned_games end
@@ -148,11 +160,13 @@ local function scan_games()
                     local key = Games.dailyCacheKey(meta,
                         lfs.attributes(pdir .. "/main.lua"),
                         lfs.attributes(pdir .. "/screen.lua"))
-                    local kind, miss = Games.cachedDailyKind(cache, id, key, function()
-                        return Games.dailyKind(read_file(pdir .. "/main.lua"),
-                                               read_file(pdir .. "/screen.lua"))
+                    local kind, party, miss = Games.cachedInfo(cache, id, key, function()
+                        local main_src = read_file(pdir .. "/main.lua")
+                        return Games.dailyKind(main_src, read_file(pdir .. "/screen.lua")),
+                               Games.partyMode(main_src)
                     end)
                     g.daily = kind
+                    g.party = party
                     fresh[id] = cache[id]
                     if miss then changed = true end
                     games[#games + 1] = g
@@ -171,7 +185,25 @@ local function scan_games()
     return scanned_games
 end
 
--- id -> last played timestamp, for every installed game ever played.
+-- Every grid tile: the games plus their "· multiplayer" tiles.
+local function scan_tiles()
+    if scanned_tiles then return scanned_tiles end
+    scanned_tiles = Games.withPartyTiles(scan_games(), _("%1 · multiplayer"))
+    tile_by_id = {}
+    for _i, t in ipairs(scanned_tiles) do tile_by_id[t.id] = t end
+    return scanned_tiles
+end
+
+-- A tile's category: "party" for a multiplayer tile, the game's otherwise.
+local function category_of(id)
+    if not tile_by_id then scan_tiles() end
+    local t = tile_by_id[id]
+    return t and t.category or Categories.of(id)
+end
+
+-- id -> last played timestamp, for every installed game ever played (any
+-- mode), and tile id -> timestamp of that tile's own mode
+-- (Games.tilesLastPlayed).
 local function last_played_map(games)
     local stats = ok_se and StatsExporter:readAll() or {}
     local mtimes = {}
@@ -186,7 +218,7 @@ local function last_played_map(games)
     for _i, g in ipairs(games) do
         map[g.id] = Games.lastPlayed(g.id, stats, mtimes)
     end
-    return map
+    return map, Games.tilesLastPlayed(scan_tiles(), stats, mtimes)
 end
 
 local function reading_data()
@@ -224,9 +256,9 @@ local function game_data()
     local lp = last_played_map(installed_games)
     local games, installed = {}, {}
     for _i, g in ipairs(installed_games) do
-        installed[#installed + 1] = { name = g.id, fullname = g.label }
+        installed[#installed + 1] = { name = g.id, fullname = g.label, mode = g.mode }
         if lp[g.id] then
-            games[#games + 1] = { name = g.id, fullname = g.label, ts = lp[g.id] }
+            games[#games + 1] = { name = g.id, fullname = g.label, ts = lp[g.id], mode = g.mode }
         end
     end
     table.sort(games, function(a, b) return a.ts > b.ts end)
@@ -321,11 +353,11 @@ local function buildGamesRowWidget(plugin, w)
     local games, _n_inst, _n_played, installed = game_data()
     if #installed == 0 then return nil end
 
-    local function launch(name)
+    local function launch(name, mode)
         return function()
             local target = plugin.ui[name]
             if target and type(target.showGame) == "function" then
-                target:showGame()
+                target:showGame(mode)
             end
         end
     end
@@ -333,11 +365,11 @@ local function buildGamesRowWidget(plugin, w)
     local vg = VerticalGroup:new{ align = "center" }
     for i = 1, math.min(5, #games) do
         local g = games[i]
-        vg[#vg + 1] = buildGameRow(w, g.fullname, reltime(g.ts), launch(g.name))
+        vg[#vg + 1] = buildGameRow(w, g.fullname, reltime(g.ts), launch(g.name, g.mode))
     end
 
     local rnd = installed[math.random(#installed)]
-    vg[#vg + 1] = buildGameRow(w, rnd.fullname, _("Suggestion"), launch(rnd.name))
+    vg[#vg + 1] = buildGameRow(w, rnd.fullname, _("Suggestion"), launch(rnd.name, rnd.mode))
 
     return vg
 end
@@ -512,12 +544,20 @@ function Dashboard:isGrouped()
     return self:getSetting("group_by_category", true) ~= false
 end
 
+-- Fills self._game_played (game id -> last session in any mode) and
+-- self._last_played (tile id -> last session in that tile's mode).
+function Dashboard:readLastPlayed()
+    self._game_played, self._last_played = last_played_map(scan_games())
+end
+
 -- The defaults a never-configured player sees: startmenu's four plus the
--- most recently played games. Cached per show (see buildModel).
+-- most recently played games (in any mode: a game played only with friends
+-- still gets its tile). Multiplayer tiles are never among them. Cached per
+-- show (see buildModel).
 function Dashboard:shownDefaults()
     if not self._defaults then
-        self._last_played = self._last_played or last_played_map(scan_games())
-        self._defaults = Games.withRecent(Games.DEFAULT_ENABLED, self._last_played, RECENT_DEFAULTS)
+        if not self._game_played then self:readLastPlayed() end
+        self._defaults = Games.withRecent(Games.DEFAULT_ENABLED, self._game_played, RECENT_DEFAULTS)
     end
     return self._defaults
 end
@@ -527,51 +567,51 @@ function Dashboard:isShown(id)
 end
 
 function Dashboard:toggleShown(id)
-    self:saveSetting("shown_games", Games.toggled(scan_games(), id,
+    self:saveSetting("shown_games", Games.toggled(scan_tiles(), id,
         self:getSetting("shown_games", nil), self:shownDefaults()))
 end
 
 -- Move a shown game one place within its group (custom order only).
 function Dashboard:moveGame(id, delta)
-    local games = scan_games()
-    local order = Games.orderIds(games, self:getSetting("game_order", nil))
+    local order = Games.orderIds(scan_tiles(), self:getSetting("game_order", nil))
     local grouped = self:isGrouped()
-    local cat = Categories.of(id)
+    local cat = category_of(id)
     local peer = function(other)
-        return self:isShown(other) and (not grouped or Categories.of(other) == cat)
+        return self:isShown(other) and (not grouped or category_of(other) == cat)
     end
     self:saveSetting("game_order", Games.moved(order, id, delta, peer))
 end
 
 function Dashboard:arrangeOpts(shown)
-    local games = scan_games()
     return {
         shown       = shown,
         mode        = self:getSortMode(),
-        order       = Games.orderIds(games, self:getSetting("game_order", nil)),
+        order       = Games.orderIds(scan_tiles(), self:getSetting("game_order", nil)),
         last_played = self._last_played or {},
         grouped     = self:isGrouped(),
-        category_of = Categories.of,
+        category_of = category_of,
         rank        = Categories.rank,
     }
 end
 
--- Sections for "All games": every installed game by category, alphabetical.
+-- Sections for "All games": every installed game (and multiplayer mode) by
+-- category, alphabetical.
 function Dashboard:allGamesSections()
-    return Games.arrange(scan_games(), {
+    return Games.arrange(scan_tiles(), {
         mode        = "custom",
         grouped     = true,
-        category_of = Categories.of,
+        category_of = category_of,
         rank        = Categories.rank,
     })
 end
 
--- Sections for the "Choose games" list: every installed game, in the same
--- grouping and custom order as the grid, so the arrows move what you see.
+-- Sections for the "Choose games" list: every installed game and every
+-- multiplayer tile, in the same grouping and custom order as the grid, so
+-- the arrows move what you see.
 function Dashboard:chooserSections()
     local opts = self:arrangeOpts(nil)
     opts.mode = "custom"
-    return Games.arrange(scan_games(), opts)
+    return Games.arrange(scan_tiles(), opts)
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -609,18 +649,20 @@ function Dashboard:lastBook()
 end
 
 function Dashboard:buildModel()
-    self._defaults, self._last_played = nil, nil
+    self._defaults = nil
     local games = scan_games()
-    self._last_played = last_played_map(games)
+    local tiles = scan_tiles()
+    self:readLastPlayed()
     local shown = function(id) return self:isShown(id) end
 
     local model = {
         book     = self:lastBook(),
         grouped  = self:isGrouped(),
-        sections = Games.arrange(games, self:arrangeOpts(shown)),
+        sections = Games.arrange(tiles, self:arrangeOpts(shown)),
     }
 
-    local rg, rts = Games.mostRecent(games, self._last_played)
+    -- Resume reopens the mode last played too.
+    local rg, rts = Games.mostRecent(tiles, self._last_played)
     if rg then model.resume = { game = rg, ts = rts } end
 
     local day = Daily.dayNumber(os.date("*t"))
@@ -656,7 +698,7 @@ function Dashboard:homeMenuItems(home)
     if self.ui.pluginmanager then
         items[#items + 1] = { text = _("Update plugins"), callback = function()
             self:closeHome()
-            UIManager:nextTick(function() self.ui.pluginmanager:fetchManifest() end)
+            UIManager:nextTick(function() self.ui.pluginmanager:doFullUpdate() end)
         end }
     end
     if self.ui.document then
@@ -682,10 +724,11 @@ function Dashboard:openBook(file)
 end
 
 -- self.ui[id] is the plugin instance registered under its directory name --
+-- a multiplayer tile's base_id --
 -- the stable id. plugin.name itself is rewritten to reader<id>/filemanager<id>
 -- by registerModule, so it is never used to find a game.
 function Dashboard:gamePlugin(g)
-    local plugin = self.ui[g.id]
+    local plugin = self.ui[g.base_id or g.id]
     if plugin and type(plugin.showGame) == "function" then return plugin end
     UIManager:show(InfoMessage:new{
         text    = T(_("%1 is not installed or not active."), g.label),
@@ -693,11 +736,14 @@ function Dashboard:gamePlugin(g)
     })
 end
 
+-- g.mode: "party" opens a multiplayer tile's mode, "solo" a party-capable
+-- game's own (PluginBase:showGame keeps the mode last asked for, so it must
+-- be given every time), nil for every other game.
 function Dashboard:launchGame(g)
     self:closeHome()
     UIManager:nextTick(function()
         local plugin = self:gamePlugin(g)
-        if plugin then plugin:showGame() end
+        if plugin then plugin:showGame(g.mode) end
     end)
 end
 
@@ -719,7 +765,7 @@ function Dashboard:launchDaily(g, done)
             plugin:showDailyChallenge()
             return
         end
-        plugin:showGame()
+        plugin:showGame(g.mode) -- always solo: the challenge is a one-player puzzle
         if done then return end
         local screen = plugin.screen
         if screen and type(screen.onDailyGame) == "function" then
@@ -736,7 +782,7 @@ function Dashboard:launchDaily(g, done)
 end
 
 function Dashboard:showAllGames(home)
-    UIManager:show(AllGames:new{
+    UIManager:show(AllGames():new{
         dash = self,
         on_close = function()
             if home and self._home == home then home:reload() end
@@ -745,7 +791,7 @@ function Dashboard:showAllGames(home)
 end
 
 function Dashboard:showChooseGames(home)
-    UIManager:show(ChooseGames:new{
+    UIManager:show(ChooseGames():new{
         dash = self,
         on_close = function()
             if home and self._home == home then home:reload() end
@@ -953,7 +999,7 @@ function Dashboard:buildStatsItems(books, n_books, games, n_inst, n_played, clos
                 mandatory = reltime(g.ts),
                 callback  = function()
                     close_all()
-                    self_ref:launchGame({ id = g.name, label = g.fullname })
+                    self_ref:launchGame({ id = g.name, label = g.fullname, mode = g.mode })
                 end,
             }
         end
@@ -987,7 +1033,7 @@ function Dashboard:buildStatsItems(books, n_books, games, n_inst, n_played, clos
             items[#items+1] = {
                 text     = _("Update plugins"),
                 callback = close_and(function()
-                    self_ref.ui.pluginmanager:fetchManifest()
+                    self_ref.ui.pluginmanager:doFullUpdate()
                 end),
             }
         end
