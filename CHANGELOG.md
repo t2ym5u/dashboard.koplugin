@@ -6,6 +6,12 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.7.2] - 2026-11-10
+
+### Added
+- The "Two readers" category (FR « À deux liseuses ») has its French,
+  Spanish and German name in the game grid.
+
 ## [1.7.1] - 2026-11-04
 
 ### Fixed
