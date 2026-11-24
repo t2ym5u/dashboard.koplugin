@@ -6,6 +6,18 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.8.0] - 2026-11-24
+
+### Added
+- Up to three books in progress (Tools → Dashboard → Books in progress
+  shown: 1, 2 or 3; 1 by default, as before). The last book keeps its
+  card; the next books of the reading history still being read (started,
+  not finished, not on hold) follow, one compact card each with the title
+  (two lines at most) and the progress. In landscape they go in the side
+  column only while it has room.
+- Picks up game-common 1.19.0: every game's title bar shows a house that
+  goes back to the Dashboard.
+
 ## [1.7.4] - 2026-11-24
 
 ### Changed

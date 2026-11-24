@@ -76,5 +76,6 @@ return {
     ["Last played first"]                    = { fr = "Derniers joués en premier", es = "Últimos jugados primero", de = "Zuletzt gespielte zuerst" },
     ["Group by category"]                    = { fr = "Grouper par catégorie", es = "Agrupar por categoría", de = "Nach Kategorie gruppieren" },
     ["Daily Challenge game"]                 = { fr = "Jeu du Défi du jour", es = "Juego del Desafío diario", de = "Spiel der täglichen Herausforderung" },
+    ["Books in progress shown: %1"]          = { fr = "Livres en cours affichés : %1", es = "Libros en curso mostrados: %1", de = "Angezeigte laufende Bücher: %1" },
     ["Automatic (a different game every day)"] = { fr = "Automatique (un jeu différent chaque jour)", es = "Automático (un juego distinto cada día)", de = "Automatisch (jeden Tag ein anderes Spiel)" },
 }

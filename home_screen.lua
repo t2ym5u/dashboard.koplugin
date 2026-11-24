@@ -2,6 +2,7 @@
 --
 --   title bar  (menu | Dashboard [page x/y] | close)
 --   Continue reading: <book>            -- hidden when there is no last book
+--   <book> · 42 %                       -- the other books in progress, if shown
 --   Resume: <game>   |  Daily Challenge -- each hidden when it has nothing
 --   game grid, by category, paged
 --   footer: < | All games | Choose games | >   (Statistics: title-bar menu)
@@ -26,6 +27,8 @@ local InputContainer  = require("ui/widget/container/inputcontainer")
 local LeftContainer   = require("ui/widget/container/leftcontainer")
 local ProgressWidget  = require("ui/widget/progresswidget")
 local Size            = require("ui/size")
+local TextBoxWidget   = require("ui/widget/textboxwidget")
+local TextWidget      = require("ui/widget/textwidget")
 local TitleBar        = require("ui/widget/titlebar")
 local UIManager       = require("ui/uimanager")
 local VerticalGroup   = require("ui/widget/verticalgroup")
@@ -90,11 +93,14 @@ end
 -- Cards
 -- ---------------------------------------------------------------------------
 
-function HomeScreen:bookCard(w, h)
-    local b = self.model.book
+local function percentText(p)
+    return math.floor(p * 100 + 0.5) .. "\u{202F}%"
+end
+
+function HomeScreen:bookCard(b, w)
     local detail = {}
     if b.authors and b.authors ~= "" then detail[#detail + 1] = b.authors end
-    if b.percent then detail[#detail + 1] = math.floor(b.percent * 100 + 0.5) .. "\u{202F}%" end
+    if b.percent then detail[#detail + 1] = percentText(b.percent) end
     local lines = {
         { text = _("Continue reading"), size = SZ_CAPTION },
         { text = b.title, size = SZ_TITLE, bold = true, max_lines = 2 },
@@ -112,7 +118,36 @@ function HomeScreen:bookCard(w, h)
             }
         end }
     end
-    return makeCard(w, h, lines, function() self.dash:openBook(b.file) end)
+    return makeCard(w, nil, lines, function() self.dash:openBook(b.file) end)
+end
+
+-- Another book in progress: its title, wrapping onto a second line at most
+-- (the landscape column is narrow), then its progress.
+function HomeScreen:smallBookCard(b, w)
+    return makeCard(w, nil, {
+        { widget = function(iw)
+            local pct = b.percent and TextWidget:new{
+                text = " · " .. percentText(b.percent), face = Widgets.face(SZ_DETAIL),
+            }
+            local title_w = iw - (pct and pct:getSize().w or 0)
+            local title = TextBoxWidget:new{
+                text = b.title, face = Widgets.face(SZ_DETAIL), bold = true, width = title_w,
+            }
+            if #title.vertical_string_list > 2 then
+                local line_h = title.line_height_px
+                title:free()
+                title = TextBoxWidget:new{
+                    text = b.title, face = Widgets.face(SZ_DETAIL), bold = true, width = title_w,
+                    height = 2 * line_h, height_overflow_show_ellipsis = true,
+                }
+            elseif #title.vertical_string_list == 1 then
+                -- One line: as wide as its text, so the progress follows it.
+                title:free()
+                title = TextWidget:new{ text = b.title, face = Widgets.face(SZ_DETAIL), bold = true }
+            end
+            return HorizontalGroup:new{ align = "center", title, pct }
+        end },
+    }, function() self.dash:openBook(b.file) end)
 end
 
 function HomeScreen:resumeCard(w, h)
@@ -137,31 +172,43 @@ end
 -- Cards for the top of page 1 (portrait) or the side column (landscape),
 -- in display order, built at width `w`. Each card is as tall as its text;
 -- the two half-width portrait cards share the taller one's height.
-function HomeScreen:buildCards(w, landscape)
+-- The landscape column does not page: the other books in progress go in it
+-- only while it has room (`max_h`, cards `vgap` apart) after the others.
+function HomeScreen:buildCards(w, landscape, max_h, vgap)
     local gap = Size.span.horizontal_default
     local cards = {}
     local m = self.model
-    if m.book then
-        cards[#cards + 1] = self:bookCard(w)
-    end
     if landscape then
+        if m.books[1] then cards[#cards + 1] = self:bookCard(m.books[1], w) end
         if m.resume then cards[#cards + 1] = self:resumeCard(w) end
         if m.daily then cards[#cards + 1] = self:dailyCard(w) end
-    else
-        if m.resume and m.daily then
-            local half = math.floor((w - gap) / 2)
-            local h = math.max(self:resumeCard(half):getSize().h, self:dailyCard(half):getSize().h)
-            cards[#cards + 1] = HorizontalGroup:new{
-                align = "top",
-                self:resumeCard(half, h),
-                HorizontalSpan:new{ width = w - 2 * half },
-                self:dailyCard(half, h),
-            }
-        elseif m.resume then
-            cards[#cards + 1] = self:resumeCard(w)
-        elseif m.daily then
-            cards[#cards + 1] = self:dailyCard(w)
+        local used = -vgap
+        for _i, c in ipairs(cards) do used = used + c:getSize().h + vgap end
+        for i = 2, #m.books do
+            local c = self:smallBookCard(m.books[i], w)
+            local h = c:getSize().h + vgap
+            if used + h > max_h then c:free(); break end
+            table.insert(cards, i, c)
+            used = used + h
         end
+        return cards
+    end
+    for i, b in ipairs(m.books) do
+        cards[#cards + 1] = i == 1 and self:bookCard(b, w) or self:smallBookCard(b, w)
+    end
+    if m.resume and m.daily then
+        local half = math.floor((w - gap) / 2)
+        local h = math.max(self:resumeCard(half):getSize().h, self:dailyCard(half):getSize().h)
+        cards[#cards + 1] = HorizontalGroup:new{
+            align = "top",
+            self:resumeCard(half, h),
+            HorizontalSpan:new{ width = w - 2 * half },
+            self:dailyCard(half, h),
+        }
+    elseif m.resume then
+        cards[#cards + 1] = self:resumeCard(w)
+    elseif m.daily then
+        cards[#cards + 1] = self:dailyCard(w)
     end
     return cards
 end
@@ -312,7 +359,7 @@ function HomeScreen:buildLayout()
     if landscape then
         local side_w = math.floor(content_w * 0.36)
         grid_w = content_w - side_w - gutter
-        cards = self:buildCards(side_w, true)
+        cards = self:buildCards(side_w, true, body_h, vgap)
         self._side_w = side_w
         first_avail, avail = body_h, body_h
     else

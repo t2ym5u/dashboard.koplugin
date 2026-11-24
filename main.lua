@@ -53,6 +53,7 @@ local ok_se, StatsExporter = pcall(require, "stats_exporter")
 -- The fleet-wide category table, from this plugin's own common/ copy (by
 -- path, like the modules above: another plugin's older game-common could
 -- otherwise hold the shared slot and miss the newest games).
+local Books       = lrequire("books")
 local Categories  = lrequire("common/game_categories")
 local Daily       = lrequire("daily")
 local Format      = lrequire("format")
@@ -628,10 +629,9 @@ end
 -- Home screen model and actions
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- The last book (G_reader_settings "lastfile", as FileManager's "Open last
--- document" uses it), or nil when there is none or it no longer exists.
-function Dashboard:lastBook()
-    local file = G_reader_settings and G_reader_settings:readSetting("lastfile")
+-- A book's title, authors, progress and status, or nil when the file no
+-- longer exists.
+function Dashboard:bookInfo(file)
     local lfs = get_lfs()
     if not file or not lfs or lfs.attributes(file, "mode") ~= "file" then return nil end
     local b = { file = file }
@@ -651,11 +651,36 @@ function Dashboard:lastBook()
         b.title   = props.title
         b.authors = props.authors and props.authors:gsub("\n", ", ") or nil
         b.percent = doc_settings:readSetting("percent_finished")
+        local summary = doc_settings:readSetting("summary")
+        b.status  = summary and summary.status
     end
     if not b.title or b.title == "" then
         b.title = file:match("([^/]+)$"):gsub("%.[^.]+$", "")
     end
     return b
+end
+
+function Dashboard:getBooksCount()
+    return Books.count(self:getSetting("books_shown", Books.DEFAULT))
+end
+
+-- The "Continue reading" books: the last one opened (G_reader_settings
+-- "lastfile", as FileManager's "Open last document" uses it), then, when the
+-- player shows more than one, the next ones of the reading history still
+-- being read.
+function Dashboard:readingBooks()
+    local last = G_reader_settings and G_reader_settings:readSetting("lastfile")
+    local n = self:getBooksCount()
+    local history = {}
+    if n > 1 then
+        local ok, ReadHistory = pcall(require, "readhistory")
+        if ok and type(ReadHistory.hist) == "table" then
+            for _i, item in ipairs(ReadHistory.hist) do
+                if item.select_enabled ~= false then history[#history + 1] = item.file end
+            end
+        end
+    end
+    return Books.pick(last, history, n, function(file) return self:bookInfo(file) end)
 end
 
 function Dashboard:buildModel()
@@ -666,7 +691,7 @@ function Dashboard:buildModel()
     local shown = function(id) return self:isShown(id) end
 
     local model = {
-        book     = self:lastBook(),
+        books    = self:readingBooks(),
         grouped  = self:isGrouped(),
         sections = Games.arrange(tiles, self:arrangeOpts(shown)),
     }
@@ -850,6 +875,16 @@ function Dashboard:addToMainMenu(menu_items)
         }
     end
 
+    local books_sub = {}
+    for _i, n in ipairs(Books.CHOICES) do
+        books_sub[#books_sub + 1] = {
+            text         = tostring(n),
+            radio        = true,
+            checked_func = function() return self_ref:getBooksCount() == n end,
+            callback     = function() self_ref:saveSetting("books_shown", n) end,
+        }
+    end
+
     local function daily_sub()
         local sub = {
             {
@@ -930,6 +965,12 @@ function Dashboard:addToMainMenu(menu_items)
             {
                 text = _("Daily Challenge game"),
                 sub_item_table_func = daily_sub,
+            },
+            {
+                text_func = function()
+                    return T(_("Books in progress shown: %1"), self_ref:getBooksCount())
+                end,
+                sub_item_table = books_sub,
             },
             {
                 text         = _("Home button \xE2\x86\x92 Dashboard"),

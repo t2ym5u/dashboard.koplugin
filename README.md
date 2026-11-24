@@ -21,7 +21,10 @@ targets, one repaint per page.
 
 - **Continue reading** — the last book you opened (title, author, progress
   bar); one tap reopens it. Hidden when there is no last book or the file is
-  gone.
+  gone. Optionally up to two more books in progress below it, the next ones
+  of your reading history (finished and on-hold books are left out).
+- **Back from a game** — while the Dashboard is installed, the house at the
+  top right of every game brings you back here.
 - **Resume** — the game you played most recently, with when you last played
   (in the mode you last played it: alone, or with friends).
 - **Daily Challenge** — today's puzzle in one of your puzzle games. The game
@@ -68,6 +71,7 @@ Open **Tools → Dashboard**:
 | Choose games | Which games the grid shows, and their order |
 | Game order | **Custom order** (set in Choose games) or **Last played first**; **Group by category** on/off |
 | Daily Challenge game | **Automatic** (a different game every day) or one game of your choice |
+| Books in progress shown | **1** (default), **2** or **3**: the last book, then the next books in progress of your reading history |
 | Home button → Dashboard | While reading, the home button opens the dashboard |
 
 Which games show by default: Sudoku, 2048, Minesweeper and Mastermind plus
