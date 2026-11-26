@@ -1,4 +1,6 @@
 return {
+    -- _meta.lua description (shown by Plugin Manager, via the manifest)
+    ["Home screen: continue reading, resume a game, daily challenge, your games and stats."] = { fr = "Écran d'accueil : reprendre la lecture ou une partie, défi du jour, vos jeux et vos statistiques.", es = "Pantalla de inicio: seguir leyendo, retomar una partida, reto del día, tus juegos y estadísticas.", de = "Startbildschirm: weiterlesen, ein Spiel fortsetzen, Tagesaufgabe, deine Spiele und Statistiken." },
     ["Dashboard"]                            = { fr = "Tableau de bord", es = "Panel de control", de = "Übersicht" },
     ["Open Dashboard"]                       = { fr = "Ouvrir le Dashboard", es = "Abrir Dashboard", de = "Dashboard öffnen" },
     ["Startup delay: %1 s"]                  = { fr = "Délai au démarrage : %1 s", es = "Retraso al iniciar: %1 s", de = "Startverzögerung: %1 s" },

@@ -6,6 +6,13 @@ Reconstructed from this repository's git history: each release lists the
 feature and fix commits it carried. Version bumps, screenshot additions
 and CI syncs are left out.
 
+## [1.8.2] - 2026-11-26
+
+### Changed
+- Plugin Manager shows this plugin's description in French, Spanish and
+  German: its translations are now in i18n_fr.lua, where the catalogue
+  (manifest.json) picks them up.
+
 ## [1.8.1] - 2026-11-24
 
 ### Changed
